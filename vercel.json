@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/notification.report.js": {
-      "runtime": "nodejs18.x",
+      "runtime": "nodejs18.x@18.17.0",
       "maxDuration": 30,
       "memory": 1024
     }
