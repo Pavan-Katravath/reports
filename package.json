@@ -1,7 +1,7 @@
 {
   "name": "reports-service",
-  "version": "1.0.0",
-  "description": "Serverless notification report generation service for Vercel",
+  "version": "1.0.1",
+  "description": "Serverless notification report generation service for Vercel - Updated for Node.js 20.x compatibility",
   "main": "api/notification.report.js",
   "scripts": {
     "dev": "vercel dev",
