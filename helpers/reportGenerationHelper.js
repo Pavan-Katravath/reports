@@ -21,6 +21,7 @@ export class ReportGenerationHelper {
     }
 
     try {
+      console.log('Initializing Puppeteer browser...');
       this.browser = await puppeteer.launch({
         headless: true,
         args: [
@@ -46,7 +47,12 @@ export class ReportGenerationHelper {
       });
     } catch (error) {
       console.error('Failed to initialize browser:', error);
-      throw new Error('Browser initialization failed');
+      console.error('Browser error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      throw new Error(`Browser initialization failed: ${error.message}`);
     }
   }
 

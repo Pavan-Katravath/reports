@@ -7,6 +7,10 @@ import { reportGenerationHelper } from '../helpers/reportGenerationHelper.js';
  */
 
 export default async function handler(req, res) {
+  console.log('Function started:', new Date().toISOString());
+  console.log('Method:', req.method);
+  console.log('Headers:', req.headers);
+
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -14,12 +18,14 @@ export default async function handler(req, res) {
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     res.status(200).end();
     return;
   }
 
   // Only allow GET and POST methods
   if (req.method !== 'GET' && req.method !== 'POST') {
+    console.log('Method not allowed:', req.method);
     res.status(405).json({ 
       error: 'Method not allowed',
       message: 'Only GET and POST methods are supported'
@@ -28,6 +34,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Starting report generation...');
     let reportData;
     let filename = 'notification-report.pdf';
     let productGroup = 'dpg'; // Default to DPG
@@ -188,16 +195,23 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error generating notification report:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
     
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to generate notification report',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      timestamp: new Date().toISOString()
     });
   } finally {
     // Clean up browser instance
     try {
+      console.log('Cleaning up browser...');
       await reportGenerationHelper.closeBrowser();
+      console.log('Browser cleanup completed');
     } catch (cleanupError) {
       console.error('Error during cleanup:', cleanupError);
     }

@@ -4,6 +4,10 @@
     "api/notification.report.js": {
       "maxDuration": 30,
       "memory": 1024
+    },
+    "api/test.js": {
+      "maxDuration": 10,
+      "memory": 256
     }
   },
   "env": {
