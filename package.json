@@ -1,0 +1,24 @@
+{
+  "name": "reports-service",
+  "version": "1.0.0",
+  "description": "Serverless notification report generation service for Vercel",
+  "main": "api/notification.report.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required'",
+    "deploy": "vercel --prod",
+    "test": "node test/test.js"
+  },
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["vercel", "serverless", "pdf", "notifications", "puppeteer"],
+  "author": "Your Name",
+  "license": "MIT"
+}
