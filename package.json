@@ -12,6 +12,8 @@
     "start": "node api/notification.report.js"
   },
   "dependencies": {
+    "html-pdf-node": "^1.0.8",
+    "pdfkit": "^0.17.2",
     "puppeteer": "^19.11.1"
   },
   "devDependencies": {

@@ -16,6 +16,14 @@
     "api/chrome-test.js": {
       "maxDuration": 15,
       "memory": 256
+    },
+    "api/pdfkit-report.js": {
+      "maxDuration": 10,
+      "memory": 256
+    },
+    "api/html-pdf-report.js": {
+      "maxDuration": 15,
+      "memory": 512
     }
   },
   "env": {
