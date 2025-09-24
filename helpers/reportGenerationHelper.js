@@ -23,7 +23,7 @@ export class ReportGenerationHelper {
     try {
       console.log('Initializing Puppeteer browser...');
       this.browser = await puppeteer.launch({
-        headless: true,
+        headless: 'new',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -33,6 +33,7 @@ export class ReportGenerationHelper {
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor'
         ],
+        executablePath: '/usr/bin/google-chrome-stable',
         timeout: 30000
       });
     } catch (error) {

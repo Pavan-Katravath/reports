@@ -12,6 +12,10 @@
     "api/simple-report.js": {
       "maxDuration": 20,
       "memory": 512
+    },
+    "api/chrome-test.js": {
+      "maxDuration": 15,
+      "memory": 256
     }
   },
   "env": {

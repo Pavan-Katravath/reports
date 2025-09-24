@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     
     console.log('Launching browser...');
     const browser = await puppeteer.default.launch({
-      headless: true,
+      headless: 'new',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -32,8 +32,8 @@ export default async function handler(req, res) {
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor'
       ],
-      // Let Puppeteer find the browser automatically
-      executablePath: undefined
+      // Use system Chrome in Vercel
+      executablePath: '/usr/bin/google-chrome-stable'
     });
 
     console.log('Creating new page...');
