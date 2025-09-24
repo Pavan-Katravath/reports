@@ -31,10 +31,13 @@ export class ReportGenerationHelper {
           '--disable-gpu',
           '--single-process',
           '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
+          '--disable-features=VizDisplayCompositor',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
         ],
-        executablePath: '/usr/bin/google-chrome-stable',
         timeout: 30000
+        // Let Puppeteer download and use its own Chromium
       });
     } catch (error) {
       console.error('Failed to initialize browser:', error);

@@ -30,10 +30,12 @@ export default async function handler(req, res) {
         '--disable-gpu',
         '--single-process',
         '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ],
-      // Use system Chrome in Vercel
-      executablePath: '/usr/bin/google-chrome-stable'
+        '--disable-features=VizDisplayCompositor',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding'
+      ]
+      // Let Puppeteer download and use its own Chromium
     });
 
     console.log('Creating new page...');
