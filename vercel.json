@@ -8,6 +8,10 @@
     "api/test.js": {
       "maxDuration": 10,
       "memory": 256
+    },
+    "api/simple-report.js": {
+      "maxDuration": 20,
+      "memory": 512
     }
   },
   "env": {
