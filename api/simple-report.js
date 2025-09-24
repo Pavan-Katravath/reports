@@ -28,8 +28,12 @@ export default async function handler(req, res) {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
-        '--single-process'
-      ]
+        '--single-process',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ],
+      // Let Puppeteer find the browser automatically
+      executablePath: undefined
     });
 
     console.log('Creating new page...');

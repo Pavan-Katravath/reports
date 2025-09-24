@@ -25,23 +25,13 @@ export class ReportGenerationHelper {
       this.browser = await puppeteer.launch({
         headless: true,
         args: [
-          '--fast-start',
           '--no-sandbox',
           '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage', // Use /tmp instead of /dev/shm
-          '--disable-background-timer-throttling', // Improves performance of background tasks
-          '--disable-renderer-backgrounding', // Keeps the renderer in the foreground
-          '--disable-extensions',
-          '--no-gpu',
-          '--override-plugin-power-saver-for-testing=never',
-          '--disable-extensions-http-throttling',
-          '--headless',
-          '--mute-audio',
-          '--disable-web-security', // Be cautious with this in less controlled environments
-          '--disable-features=site-per-process', // Disables site isolation
-          '--disable-hang-monitor', // Disables the hang monitor
-          '--disable-popup-blocking', // Disables popup blocking
-          '--disable-prompt-on-repost', // Disables prompts on repost
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--single-process',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
         ],
         timeout: 30000
       });
