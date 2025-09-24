@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>DPG Field Service Report</title>
+		<style>
+			@font-face {
+				font-family: Times;
+				src: url(data:font/truetype;charset=utf-8;base64,T1RUTwAKAIAAAwAgQ0ZGIJWzjlkAAACsAABkiUdQT1Nholk+AABosAAACG5PUy8yE0PKAgAAdzgAAABgY21hcHvRgHEAAGU4AAADdGhlYWTuqOa3AABxIAAAADZoaGVhCKMDxAAAcVgAAAAkaG10eJm2JfsAAHGAAAACyG1heHAAslAAAAB0TAAAAAZuYW1lkL1b/wAAdFQAAALicG9zdP+VADwAAHecAAAAIAEABAQAAQEBEE9QVElUaW1lcy1Sb21hbgABAgABADz4DwD4GwH4HAL4HAP4FwT7AgwDxwwEHQBMgr0N+1r7sRwFD/rrBRwAtg8cAAAQHAIZERwAJx0AAGRiEgADAgABADkASABQMS4yLCBDb3B5cmlnaHQgQ29wci4gQ2FzdGNyYWZ0IFNvZnR3YXJlLCBJbmMuIDE5OTAtMTk5MS5PUFRJVGltZXMtUm9tYW5pbmZpbml0eQAAAAABAAIAAwAEAAUABgAHAGgACQAKAAsADAANAA4ADwAQABEAEgATABQAFQAWABcAGAAZABoAGwAcAB0AHgAfACAAIQAiACMAJAAlACYAJwAoACkAKgArACwALQAuAC8AMAAxADIAMwA0ADUANgA3ADgAOQA6ADsAPAA9AD4APwBAAHwAQgBDAEQARQBGAEcASABJAEoASwBMAE0ATgBPAFAAUQBSAFMAVABVAFYAVwBYAFkAWgBbAFwAXQBeAF8ArQCvALEAsgC6AL0AwwDIAMsAyQDKAM0AzADOAM8A0gDQANEA0wDWANQA1QDXANgA2wDZANoA3ADeAOEA3wDgAGEAYgB0AJUAfQCDAIoAjQGJAJAAkwBlAK4AsAC/AI4AlABvAIkAaQB3AEEACADjAMYAYwBrAGwAbQBuAHIArACzAKsAtAC1ALYAtwC4ALkAuwC8AL4AwQDCAMQAkQB+AH8AhAC);
+				font-weight: normal;
+				font-style: normal;
+			}
+			@font-face {
+				font-family: TimesBold;
+				src: url(data:font/truetype;charset=utf-8;base64,AAEAAAAQAEAABADAT1MvMmgxgrAAAJh0AAAATlBDTFSVOB5MAACYxAAAADZjbWFwaJ4higAAkIAAAAO4Y3Z0ICHpJWUAAJfUAAAAnmZwZ22YXNyiAAAExAAAAGRnbHlm3SRK3QAABmAAAISQaGRteDWXbrYAAJj8AAAOyGhlYWTLjJDyAAABDAAAADZoaGVhA1YG5wAAAUQAAAAkaG10eBZm34MAAJQ4AAADnGtlcm4mBC2wAACnxAAABHpsb2NhAESj+gAAivAAAAOgbWF4cAJLAXYAAAFoAAAAIG5hbWUQMg73AAABiAAAAzlwb3N0Nzs14QAAjpAAAAHwcHJlcNUnL3YAAAUoAAABNwABAAAAAQAAi0K99l8PPPUAAAPoAAAAADLcqF0AAAAAMtyoXf9Y/yYD6AOnAAEACwACAAEAAAAAAAEAAAOn/yYAAAPo/1j/XgPoAAEAAAAAAAAAAAAAAAAAAADnAAEAAADnAHAABgBeAAQAAgAIAEAACgAAAHEBNwACAAMAAAAVAQIAAAAAAAAAAADqAHUAAAAAAAAAAQAKAWQAAAAAAAAAAgAIAXIAAAAAAAAAAwAeAYkAAAAAAAAABAAUAbEAAAAAAAAABQA4AeEAAAAAAAAABgAUAiMAAQAAAAAAAAB1AAAAAQAAAAAAAQAFAV8AAQAAAAAAAgAEAW4AAQAAAAAAAwAPAXoAAQAAAAAABAAKAacAAQAAAAAABQAcAcUAAQAAAAAABgAKAhkAAwABBAkAAADqAHUAAwABBAkAAQAKAWQAAwABBAkAAgAIAXIAAwABBAkAAwAeAYkAAwABBAkABAAUAbEAAwABBAkABQA4AeEAAwABBAkABgAUAiNDb3B5cmlnaHQgKGMpIDE5OTcgTGlub3R5cGUtSGVsbCBBRy4gQWxsIHJpZ2h0cyByZXNlcnZlZC5UaW1);
+			}
+			body {
+				line-height: 1.4rem;
+				font-weight: 800;
+				font-family: Times, serif;
+				margin: 0;
+				padding: 0;
+			}
+			.page {
+				width: 210mm;
+				min-height: 297mm;
+				margin: 0 auto;
+				background: white;
+				position: relative;
+			}
+			.header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				padding: 20px 30px;
+				border-bottom: 2px solid #333;
+			}
+			.logo {
+				height: 40px;
+			}
+			.title {
+				font-size: 24px;
+				font-family: TimesBold, serif;
+				font-weight: bold;
+			}
+			.content {
+				padding: 30px;
+			}
+			.section {
+				margin-bottom: 30px;
+			}
+			.section-title {
+				font-size: 18px;
+				font-family: TimesBold, serif;
+				font-weight: bold;
+				margin-bottom: 15px;
+				border-bottom: 1px solid #333;
+				padding-bottom: 5px;
+			}
+			.field {
+				margin-bottom: 15px;
+			}
+			.field-label {
+				font-weight: bold;
+				display: inline-block;
+				width: 150px;
+			}
+			.field-value {
+				display: inline-block;
+				min-height: 20px;
+				border-bottom: 1px solid #333;
+				padding: 2px 5px;
+				min-width: 200px;
+			}
+			.signature-section {
+				display: flex;
+				justify-content: space-between;
+				margin-top: 50px;
+			}
+			.signature {
+				text-align: center;
+				width: 200px;
+			}
+			.signature-image {
+				width: 150px;
+				height: 60px;
+				border: 1px solid #333;
+				margin-bottom: 10px;
+			}
+			.signature-label {
+				font-weight: bold;
+				border-top: 1px solid #333;
+				padding-top: 5px;
+			}
+			.list {
+				margin-left: 20px;
+			}
+			.list li {
+				margin-bottom: 8px;
+			}
+			.footer {
+				position: absolute;
+				bottom: 20px;
+				right: 30px;
+				font-size: 10px;
+				color: #666;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="page">
+			<div class="header">
+				<img id="logo" class="logo" src="" alt="Company Logo" />
+				<div class="title">Field Service Report</div>
+			</div>
+			
+			<div class="content">
+				<div class="section">
+					<div class="section-title">Report Information</div>
+					<div class="field">
+						<span class="field-label">Call Number:</span>
+						<span id="call_no" class="field-value"></span>
+					</div>
+					<div class="field">
+						<span class="field-label">Customer Name:</span>
+						<span id="customer_name" class="field-value"></span>
+					</div>
+					<div class="field">
+						<span class="field-label">Site Name:</span>
+						<span id="site_name" class="field-value"></span>
+					</div>
+					<div class="field">
+						<span class="field-label">Engineer Name:</span>
+						<span id="engineer_name" class="field-value"></span>
+					</div>
+					<div class="field">
+						<span class="field-label">Report Date:</span>
+						<span id="report_date" class="field-value"></span>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">Work Performed</div>
+					<div id="work_performed" class="field-value" style="min-height: 100px; border: 1px solid #333; padding: 10px;"></div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">Safety Observations</div>
+					<ul id="safety_observations" class="list"></ul>
+				</div>
+
+				<div class="section">
+					<div class="section-title">Work Performed Details</div>
+					<ul id="work_performed_list" class="list"></ul>
+				</div>
+
+				<div class="section">
+					<div class="section-title">Recommendations</div>
+					<div id="recommendations" class="field-value" style="min-height: 80px; border: 1px solid #333; padding: 10px;"></div>
+					<ul id="recommendations_list" class="list"></ul>
+				</div>
+
+				<div class="signature-section">
+					<div class="signature">
+						<img id="engineer_signature" class="signature-image" src="" alt="Engineer Signature" />
+						<div class="signature-label">Engineer Signature</div>
+					</div>
+					<div class="signature">
+						<img id="manager_signature" class="signature-image" src="" alt="Manager Signature" />
+						<div class="signature-label">Manager Signature</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="footer">
+				Generated by Notification Report Service
+			</div>
+		</div>
+	</body>
+</html>

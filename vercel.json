@@ -2,12 +2,17 @@
   "version": 2,
   "functions": {
     "api/notification.report.js": {
-      "maxDuration": 30,
-      "memory": 1024
+      "maxDuration": 30
     }
   },
   "env": {
     "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
     "PUPPETEER_EXECUTABLE_PATH": "/usr/bin/chromium-browser"
-  }
+  },
+  "builds": [
+    {
+      "src": "api/notification.report.js",
+      "use": "@vercel/node"
+    }
+  ]
 }

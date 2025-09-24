@@ -1,9 +1,10 @@
 import puppeteer from 'puppeteer';
-import { generateReportTemplate, generateSimpleTemplate } from '../templates/reportTemplate.js';
+import { generateDPGReport, generateThermalOrPowerReport, generateDCPSReport } from '../templates/reportTemplate.js';
 
 /**
  * PDF Generation Helper using Puppeteer
  * Handles HTML to PDF conversion with proper error handling
+ * Compatible with collab project's report generation system
  */
 export class ReportGenerationHelper {
   constructor() {
@@ -23,15 +24,23 @@ export class ReportGenerationHelper {
       this.browser = await puppeteer.launch({
         headless: true,
         args: [
+          '--fast-start',
           '--no-sandbox',
           '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
+          '--disable-dev-shm-usage', // Use /tmp instead of /dev/shm
+          '--disable-background-timer-throttling', // Improves performance of background tasks
+          '--disable-renderer-backgrounding', // Keeps the renderer in the foreground
+          '--disable-extensions',
+          '--no-gpu',
+          '--override-plugin-power-saver-for-testing=never',
+          '--disable-extensions-http-throttling',
+          '--headless',
+          '--mute-audio',
+          '--disable-web-security', // Be cautious with this in less controlled environments
+          '--disable-features=site-per-process', // Disables site isolation
+          '--disable-hang-monitor', // Disables the hang monitor
+          '--disable-popup-blocking', // Disables popup blocking
+          '--disable-prompt-on-repost', // Disables prompts on repost
         ],
         timeout: 30000
       });
@@ -82,10 +91,10 @@ export class ReportGenerationHelper {
         format: 'A4',
         printBackground: true,
         margin: {
-          top: '20mm',
-          right: '20mm',
-          bottom: '20mm',
-          left: '20mm'
+          top: '5mm',
+          right: '5mm',
+          bottom: '5mm',
+          left: '5mm'
         },
         displayHeaderFooter: true,
         headerTemplate: '<div></div>',
@@ -109,45 +118,160 @@ export class ReportGenerationHelper {
   }
 
   /**
-   * Generate notification report PDF
-   * @param {Object} reportData - Report data object
-   * @param {Object} options - PDF generation options
+   * Generate DPG Report PDF
+   * @param {Object} finalObject - Report data object
    * @returns {Promise<Buffer>} PDF buffer
    */
-  async generateReport(reportData, options = {}) {
+  async generateDPGReport(finalObject) {
     try {
-      // Generate HTML template
-      const htmlContent = generateReportTemplate(reportData);
+      await this.initializeBrowser();
+      const page = await this.browser.newPage();
       
-      // Convert to PDF
-      const pdfBuffer = await this.generatePDFFromHTML(htmlContent, options);
+      // Load DPG HTML template
+      const htmlContent = await this.loadDPGHTML();
+      await page.setContent(htmlContent);
       
+      // Generate PDF using DPG report function
+      const pdfBuffer = await generateDPGReport(page, finalObject);
+      
+      await page.close();
       return pdfBuffer;
     } catch (error) {
-      console.error('Report generation failed:', error);
-      throw new Error(`Report generation failed: ${error.message}`);
+      console.error('DPG report generation failed:', error);
+      throw new Error(`DPG report generation failed: ${error.message}`);
     }
   }
 
   /**
-   * Generate simple report PDF
-   * @param {Object} reportData - Simple report data
-   * @param {Object} options - PDF generation options
+   * Generate Thermal or Power Report PDF
+   * @param {Object} finalObject - Report data object
    * @returns {Promise<Buffer>} PDF buffer
    */
-  async generateSimpleReport(reportData, options = {}) {
+  async generateThermalOrPowerReport(finalObject) {
     try {
-      // Generate simple HTML template
-      const htmlContent = generateSimpleTemplate(reportData);
+      await this.initializeBrowser();
+      const page = await this.browser.newPage();
       
-      // Convert to PDF
-      const pdfBuffer = await this.generatePDFFromHTML(htmlContent, options);
+      // Load Thermal HTML template
+      const htmlContent = await this.loadThermalHTML();
+      await page.setContent(htmlContent);
       
+      // Generate PDF using Thermal report function
+      const pdfBuffer = await generateThermalOrPowerReport(page, finalObject);
+      
+      await page.close();
       return pdfBuffer;
     } catch (error) {
-      console.error('Simple report generation failed:', error);
-      throw new Error(`Simple report generation failed: ${error.message}`);
+      console.error('Thermal/Power report generation failed:', error);
+      throw new Error(`Thermal/Power report generation failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Generate DCPS Report PDF
+   * @param {Object} finalObject - Report data object
+   * @returns {Promise<Buffer>} PDF buffer
+   */
+  async generateDCPSReport(finalObject) {
+    try {
+      await this.initializeBrowser();
+      const page = await this.browser.newPage();
+      
+      // Load DCPS HTML template
+      const htmlContent = await this.loadDCPSHTML();
+      await page.setContent(htmlContent);
+      
+      // Generate PDF using DCPS report function
+      const pdfBuffer = await generateDCPSReport(page, finalObject);
+      
+      await page.close();
+      return pdfBuffer;
+    } catch (error) {
+      console.error('DCPS report generation failed:', error);
+      throw new Error(`DCPS report generation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Load DPG HTML template
+   * @returns {Promise<string>} HTML content
+   */
+  async loadDPGHTML() {
+    // Load the actual DPG HTML template
+    const fs = await import('fs');
+    const path = await import('path');
+    const templatePath = path.join(process.cwd(), 'templates', 'dpg.html');
+    return fs.readFileSync(templatePath, 'utf8');
+  }
+
+  /**
+   * Load Thermal HTML template
+   * @returns {Promise<string>} HTML content
+   */
+  async loadThermalHTML() {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .content { line-height: 1.6; }
+        .footer { margin-top: 50px; text-align: center; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Thermal/Power Field Service Report</h1>
+        <p>Generated on ${new Date().toLocaleString()}</p>
+    </div>
+    <div class="content">
+        <p>This is a placeholder for the Thermal/Power report template.</p>
+        <p>The actual template will be loaded from the templates directory.</p>
+    </div>
+    <div class="footer">
+        <p>Generated by Notification Report Service</p>
+    </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * Load DCPS HTML template
+   * @returns {Promise<string>} HTML content
+   */
+  async loadDCPSHTML() {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCPS Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .content { line-height: 1.6; }
+        .footer { margin-top: 50px; text-align: center; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>DCPS Field Service Report</h1>
+        <p>Generated on ${new Date().toLocaleString()}</p>
+    </div>
+    <div class="content">
+        <p>This is a placeholder for the DCPS report template.</p>
+        <p>The actual template will be loaded from the templates directory.</p>
+    </div>
+    <div class="footer">
+        <p>Generated by Notification Report Service</p>
+    </div>
+</body>
+</html>`;
   }
 
   /**
@@ -156,69 +280,60 @@ export class ReportGenerationHelper {
    */
   async generateSampleReport() {
     const sampleData = {
-      title: 'Sample Notification Report',
-      timestamp: new Date().toISOString(),
-      summary: {
-        total: 15,
-        unread: 3,
-        urgent: 2,
-        resolved: 10
+      param: {
+        call_no: 'SAMPLE-001',
+        product_group: 'dpg',
+        params: JSON.stringify({
+          customer_name: 'Sample Customer',
+          site_name: 'Sample Site',
+          engineer_name: 'John Doe',
+          report_date: new Date().toISOString().split('T')[0],
+          work_performed: 'Sample maintenance work performed',
+          recommendations: 'Sample recommendations for future maintenance'
+        }),
+        engineerSignature: '',
+        managerSignature: '',
+        dontSentEmail: true
       },
-      notifications: [
-        {
-          type: 'Alert',
-          message: 'System maintenance scheduled for tonight at 2 AM',
-          priority: 'High',
-          status: 'Active',
-          source: 'System Monitor',
-          user: 'admin',
-          timestamp: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-          type: 'Warning',
-          message: 'Disk space usage exceeded 85% on server-01',
-          priority: 'Medium',
-          status: 'Active',
-          source: 'Server Monitor',
-          user: 'ops-team',
-          timestamp: new Date(Date.now() - 7200000).toISOString()
-        },
-        {
-          type: 'Info',
-          message: 'New user registration: john.doe@example.com',
-          priority: 'Low',
-          status: 'Resolved',
-          source: 'User Management',
-          user: 'system',
-          timestamp: new Date(Date.now() - 10800000).toISOString()
-        },
-        {
-          type: 'Error',
-          message: 'Database connection timeout occurred',
-          priority: 'High',
-          status: 'Resolved',
-          source: 'Database Monitor',
-          user: 'dba-team',
-          timestamp: new Date(Date.now() - 14400000).toISOString()
-        },
-        {
-          type: 'Success',
-          message: 'Backup completed successfully',
-          priority: 'Low',
-          status: 'Resolved',
-          source: 'Backup Service',
-          user: 'backup-service',
-          timestamp: new Date(Date.now() - 18000000).toISOString()
+      paramObj: {
+        customer_name: 'Sample Customer',
+        site_name: 'Sample Site',
+        engineer_name: 'John Doe',
+        report_date: new Date().toISOString().split('T')[0],
+        work_performed: 'Sample maintenance work performed',
+        recommendations: 'Sample recommendations for future maintenance'
+      },
+      formdata: {
+        safety_observations: [
+          'All safety protocols were followed',
+          'Personal protective equipment was used',
+          'Work area was properly secured'
+        ],
+        work_performed: [
+          'System inspection completed',
+          'Preventive maintenance performed',
+          'Documentation updated'
+        ],
+        recommendations: [
+          'Schedule next maintenance in 6 months',
+          'Monitor system performance',
+          'Update maintenance procedures'
+        ]
+      },
+      room: {
+        name: 'sample',
+        customFields: {
+          engineerSignature: '',
+          managerSignature: ''
         }
-      ],
-      metadata: {
-        generatedBy: 'notification-report-service',
-        version: '1.0.0',
-        environment: 'production'
-      }
+      },
+      logo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAAD8CAYAAADkDI70AAABgWlDQ1BzUkdCIElFQzYxOTY2LTIuMQAAKJF1kc8rw2Ecx18bmpimOFAOS+NkmpG4OGwxCoeZMly2736pbb59v5OWq3JVlLj4deAv4KqclSJScpQzcWF9fb7bakv2eXo+z+t5P5/Pp+f5PGANpZWMXu+BTDanBQM+50J40Wl7xUInNkYYiii6OjM3EaKmfT1ItNid26xVO+5fa47FdQUsjcJjiqrlhCeFp9dzqsm7wu1KKhITPhfu0+SCwvemHi3xm8nJEv+YrIWCfrC2CjuTVRytYiWlZYTl5bgy6TWlfB/zJfZ4dn5O1m6ZXegECeDDyRTj+BlmgFHxw7jx0i87auR7ivmzrEquIl4lj8YKSVLk6BN1TarHZU2IHpeRJm/2/29f9cSgt1Td7oOGF8P46AHbDhS2DeP72DAKJ1D3DFfZSv7qEYx8ir5d0VyH4NiEi+uKFt2Dyy3oeFIjWqQo1cm0JhLwfgYtYWi7haalUs/K55w+QmhDvuoG9g+gV+Idy7/KAmgT1d6GTAAAAAlwSFlzAAALEwAACxMBAJqcGAAAIABJREFUeJzt3XeYJGXV/vHvBmCJkgQFQQGxERATisALSFwWOCSXLIgioCg/wABmRMH4vhgwgzAsUWBJhxyWaEBMmNA2K0El57Th90fVsLPDzGx3T9Vzqqrvz3Xt5bo7U+eGZbv71PPUcyYgjWJmSwOrAS8b9mN5YAlg8fzHSD9fDHgGeBJ4asiPJ4f9/AHgrmE//uXuj6f4ZxQREREREWmiCdEBpHtmtgywAfDa/H/XYH4jvnRgtEeZ37D/Ffg1cAfwazXvIiIiIiIiY1ODXmFmNgFYk6wRH+yxAfAK6vVnN4+sYb9j6A93/3tkKBERERERkSqpU5PXeHlDvj6wVf5jc2DZ0FDluh+4CZgFzHL3PwTs',
+      tableHTML: '',
+      returnedEls: [],
+      issuedEls: []
     };
 
-    return await this.generateReport(sampleData);
+    return await this.generateDPGReport(sampleData);
   }
 }
 
@@ -226,11 +341,14 @@ export class ReportGenerationHelper {
 export const reportGenerationHelper = new ReportGenerationHelper();
 
 // Export individual functions for convenience
-export const generateReport = (reportData, options) => 
-  reportGenerationHelper.generateReport(reportData, options);
+export const generateDPGReport = (finalObject) => 
+  reportGenerationHelper.generateDPGReport(finalObject);
 
-export const generateSimpleReport = (reportData, options) => 
-  reportGenerationHelper.generateSimpleReport(reportData, options);
+export const generateThermalOrPowerReport = (finalObject) => 
+  reportGenerationHelper.generateThermalOrPowerReport(finalObject);
+
+export const generateDCPSReport = (finalObject) => 
+  reportGenerationHelper.generateDCPSReport(finalObject);
 
 export const generateSampleReport = () => 
   reportGenerationHelper.generateSampleReport();

@@ -3,11 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports Service API</title>
+    <title>Notification Report Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 2rem;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .endpoint {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+        
+        .get {
+            background: #28a745;
+            color: white;
+        }
+        
+        .post {
+            background: #007bff;
+            color: white;
+        }
+        
+        .url {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .description {
+            margin-top: 0.5rem;
+            color: #6c757d;
+        }
+        
+        .example {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            overflow-x: auto;
+        }
+        
+        .example pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .feature {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        
+        .test-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0.5rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .test-button:hover {
+            background: #218838;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 2rem;
+            opacity: 0.8;
+        }
+    </style>
 </head>
 <body>
-    <h1>Reports Service API</h1>
-    <p>This is a serverless API for generating notification reports.</p>
-    <p>API endpoint: <code>/api/notification.report</code></p>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Notification Report Service</h1>
+            <p>Serverless PDF generation service compatible with collab project</p>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <h2>🚀 API Endpoints</h2>
+                
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/notification.report</span>
+                    <div class="description">Generate a sample PDF report for testing</div>
+                    <div class="example">
+                        <pre>curl -X GET https://your-service.vercel.app/api/notification.report \
+  -H "Accept: application/pdf" \
+  --output sample-report.pdf</pre>
+                    </div>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/notification.report</span>
+                    <div class="description">Generate a custom PDF report with provided data</div>
+                    <div class="example">
+                        <pre>curl -X POST https://your-service.vercel.app/api/notification.report \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/pdf" \
+  -d '{
+    "call_no": "CALL-001",
+    "product_group": "dpg",
+    "params": {
+      "customer_name": "ABC Company",
+      "site_name": "Main Office",
+      "engineer_name": "John Smith",
+      "report_date": "2024-01-15",
+      "work_performed": "System maintenance and inspection",
+      "recommendations": "Schedule next maintenance in 6 months"
+    },
+    "formdata": {
+      "safety_observations": [
+        "All safety protocols followed",
+        "PPE used correctly"
+      ],
+      "work_performed": [
+        "System inspection",
+        "Preventive maintenance",
+        "Documentation update"
+      ],
+      "recommendations": [
+        "Monitor system performance",
+        "Schedule regular maintenance"
+      ]
+    },
+    "filename": "abc-company-report.pdf"
+  }' \
+  --output custom-report.pdf</pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📊 Supported Product Groups</h2>
+                <ul>
+                    <li><strong>dpg</strong>: DPG Field Service Report</li>
+                    <li><strong>air</strong>: Thermal/Power Field Service Report</li>
+                    <li><strong>power</strong>: Thermal/Power Field Service Report</li>
+                    <li><strong>dcps</strong>: DCPS Field Service Report</li>
+                </ul>
+            </div>
+            
+            <div class="section">
+                <h2>🧪 Test the API</h2>
+                <p>Try these test endpoints:</p>
+                <a href="/api/notification.report" class="test-button" download="sample-report.pdf">
+                    📄 Generate Sample Report
+                </a>
+                <button class="test-button" onclick="testCustomReport()">
+                    🔧 Test Custom Report
+                </button>
+            </div>
+            
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Serverless</h3>
+                    <p>Optimized for Vercel serverless functions</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📄</div>
+                    <h3>PDF Generation</h3>
+                    <p>Uses Puppeteer for reliable PDF creation</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Customizable</h3>
+                    <p>HTML templates for different report types</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔧</div>
+                    <h3>Modular</h3>
+                    <p>Clean separation of concerns</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Error Handling</h3>
+                    <p>Comprehensive error management</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🌐</div>
+                    <h3>CORS Support</h3>
+                    <p>Cross-origin request handling</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Powered by Vercel Serverless Functions | Compatible with Collab Project</p>
+        </div>
+    </div>
+    
+    <script>
+        function testCustomReport() {
+            const testData = {
+                call_no: 'TEST-001',
+                product_group: 'dpg',
+                params: {
+                    customer_name: 'Test Customer',
+                    site_name: 'Test Site',
+                    engineer_name: 'Test Engineer',
+                    report_date: new Date().toISOString().split('T')[0],
+                    work_performed: 'Test maintenance work performed',
+                    recommendations: 'Test recommendations for future maintenance'
+                },
+                formdata: {
+                    safety_observations: [
+                        'All safety protocols were followed',
+                        'Personal protective equipment was used',
+                        'Work area was properly secured'
+                    ],
+                    work_performed: [
+                        'System inspection completed',
+                        'Preventive maintenance performed',
+                        'Documentation updated'
+                    ],
+                    recommendations: [
+                        'Schedule next maintenance in 6 months',
+                        'Monitor system performance',
+                        'Update maintenance procedures'
+                    ]
+                },
+                filename: 'test-report.pdf'
+            };
+            
+            fetch('/api/notification.report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(testData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Network response was not ok');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'test-report.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error generating report: ' + error.message);
+            });
+        }
+    </script>
 </body>
 </html>

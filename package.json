@@ -1,13 +1,14 @@
 {
-  "name": "reports-service",
-  "version": "1.0.1",
-  "description": "Serverless notification report generation service for Vercel - Updated for Node.js 20.x compatibility",
+  "name": "notification-report-service",
+  "version": "1.0.0",
+  "description": "Serverless notification report generation service for Vercel, compatible with collab project",
   "main": "api/notification.report.js",
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'No build step required'",
     "deploy": "vercel --prod",
-    "test": "node test/test.js"
+    "test": "node test/test.js",
+    "start": "node api/notification.report.js"
   },
   "dependencies": {
     "puppeteer": "^21.0.0"
@@ -16,9 +17,27 @@
     "vercel": "^32.0.0"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=18.0.0"
   },
-  "keywords": ["vercel", "serverless", "pdf", "notifications", "puppeteer"],
+  "keywords": [
+    "vercel",
+    "serverless",
+    "pdf",
+    "notifications",
+    "puppeteer",
+    "collab",
+    "dpg",
+    "thermal",
+    "dcps"
+  ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/notification-report-service.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/notification-report-service/issues"
+  },
+  "homepage": "https://github.com/your-username/notification-report-service#readme"
 }
