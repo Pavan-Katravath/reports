@@ -165,9 +165,17 @@ export default async function handler(req, res) {
 				keyPrefix: process.env.AWS_S3_KEY_PREFIX || 'fsr'
 			};
 			
-			// Add MinIO endpoint if provided
+			// Add MinIO endpoint if provided (but validate it's not localhost in production)
 			if (process.env.MINIO_ENDPOINT || process.env.MINIO_URL) {
-				s3Credentials.endpoint = process.env.MINIO_ENDPOINT || process.env.MINIO_URL;
+				const endpoint = process.env.MINIO_ENDPOINT || process.env.MINIO_URL;
+				
+				// Prevent localhost endpoints in production
+				if (process.env.NODE_ENV === 'production' && (endpoint.includes('localhost') || endpoint.includes('127.0.0.1'))) {
+					console.warn('MinIO endpoint is set to localhost in production environment. This will likely fail.');
+					console.warn('Please configure a proper MinIO endpoint or use AWS S3 instead.');
+				}
+				
+				s3Credentials.endpoint = endpoint;
 			}
 			
 			console.log('Using environment variables for S3/MinIO credentials');
@@ -182,8 +190,19 @@ export default async function handler(req, res) {
 			hasAwsCredentials: !!param.awsCredentials,
 			paramObjKeys: paramObj ? Object.keys(paramObj) : 'no paramObj',
 			s3CredentialsKeys: s3Credentials ? Object.keys(s3Credentials) : 'none',
-			allParamKeys: Object.keys(param)
+			allParamKeys: Object.keys(param),
+			hasEndpoint: s3Credentials ? !!s3Credentials.endpoint : false,
+			endpoint: s3Credentials ? s3Credentials.endpoint : 'none'
 		});
+		
+		// Validate S3 credentials before proceeding
+		if (!s3Credentials) {
+			console.warn('No S3 credentials provided in request or environment variables');
+			console.warn('PDF will be returned as base64 instead of uploaded to S3');
+		} else if (s3Credentials.endpoint && (s3Credentials.endpoint.includes('localhost') || s3Credentials.endpoint.includes('127.0.0.1'))) {
+			console.warn('S3 endpoint is set to localhost. This will likely fail in production.');
+			console.warn('Consider using AWS S3 or a proper MinIO endpoint instead.');
+		}
 		
 		// Mock room data for serverless environment
 		const room = {
@@ -256,37 +275,56 @@ export default async function handler(req, res) {
 		// Upload PDF to S3 using credentials from collab project
 		const fileName = `${param.call_no || 'report'}.pdf`;
 		
-		try {
-			const uploadResult = await uploadToS3(bufferContent, fileName, s3Credentials);
+		// Check if we have valid S3 credentials before attempting upload
+		if (!s3Credentials || !s3Credentials.accessKeyId || !s3Credentials.secretAccessKey || !s3Credentials.bucketName) {
+			console.warn('Invalid or missing S3 credentials, returning PDF as base64');
 			
-			console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
-			console.log(`Response: ${JSON.stringify({ success: true, etag: uploadResult.etag, fileName, path: uploadResult.key, url: uploadResult.url })}`);
-
-			// Return S3 upload information
-			res.status(200).json({
-				success: true,
-				etag: uploadResult.etag,
-				fileName,
-				path: uploadResult.key,
-				url: uploadResult.url,
-				message: 'PDF generated and uploaded to S3 successfully'
-			});
-		} catch (uploadError) {
-			console.warn('S3 upload failed, returning PDF as base64:', uploadError.message);
-			
-			// Fallback: return PDF as base64 when S3 is unavailable
+			// Return PDF as base64 when S3 credentials are missing
 			const pdfBase64 = bufferContent.toString('base64');
 			
 			console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
-			console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 upload failed)' })}`);
+			console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 credentials missing)' })}`);
 
 			res.status(200).json({
 				success: true,
 				fileName,
 				pdfBase64,
-				message: 'PDF generated successfully (S3 upload failed)',
-				warning: uploadError.message
+				message: 'PDF generated successfully (S3 credentials missing)',
+				warning: 'S3 credentials are missing or invalid. Please provide valid S3 credentials in the request payload.'
 			});
+		} else {
+			try {
+				const uploadResult = await uploadToS3(bufferContent, fileName, s3Credentials);
+				
+				console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+				console.log(`Response: ${JSON.stringify({ success: true, etag: uploadResult.etag, fileName, path: uploadResult.key, url: uploadResult.url })}`);
+
+				// Return S3 upload information
+				res.status(200).json({
+					success: true,
+					etag: uploadResult.etag,
+					fileName,
+					path: uploadResult.key,
+					url: uploadResult.url,
+					message: 'PDF generated and uploaded to S3 successfully'
+				});
+			} catch (uploadError) {
+				console.warn('S3 upload failed, returning PDF as base64:', uploadError.message);
+				
+				// Fallback: return PDF as base64 when S3 is unavailable
+				const pdfBase64 = bufferContent.toString('base64');
+				
+				console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+				console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 upload failed)' })}`);
+
+				res.status(200).json({
+					success: true,
+					fileName,
+					pdfBase64,
+					message: 'PDF generated successfully (S3 upload failed)',
+					warning: uploadError.message
+				});
+			}
 		}
 
 	} catch (error) {
