@@ -1,16 +1,18 @@
 # Notification Report Service
 
-A serverless notification report generation service built for Vercel, compatible with the collab project's notification.report API. This service generates PDF reports using Puppeteer and can handle DPG, Thermal/Power, and DCPS report types.
+A serverless notification report generation service built for Vercel, compatible with the collab project's notification.report API. This service generates PDF reports using PDFKit and can handle DPG, Thermal/Power, and DCPS report types.
 
 ## Features
 
 - 🚀 Serverless architecture optimized for Vercel
-- 📄 PDF generation using Puppeteer
-- 🎨 Customizable HTML templates
+- 📄 PDF generation using PDFKit
+- 🎨 PDFKit-based report templates
 - 🔧 Modular design with separate helpers and templates
 - 🛡️ Comprehensive error handling
 - 🌐 CORS support for cross-origin requests
 - 📊 Compatible with collab project's API structure
+- ☁️ Automatic S3 upload for generated PDFs
+- 🔗 Returns S3 URLs for PDF access
 
 ## Project Structure
 
@@ -73,23 +75,32 @@ Generates a PDF report based on the provided data.
   "engineerSignature": "data:image/png;base64,...",
   "managerSignature": "data:image/png;base64,...",
   "dontSentEmail": false,
-  "filename": "custom-report.pdf"
+  "filename": "custom-report.pdf",
+  "s3Credentials": {
+    "accessKeyId": "YOUR_AWS_ACCESS_KEY_ID",
+    "secretAccessKey": "YOUR_AWS_SECRET_ACCESS_KEY",
+    "region": "us-east-1",
+    "bucketName": "your-s3-bucket-name",
+    "keyPrefix": "fsr/2024"
+  }
 }
 ```
 
 **Response:**
-- Content-Type: `application/pdf`
-- Content-Disposition: `attachment; filename="report.pdf"`
-- Body: PDF file buffer
+- Content-Type: `application/json`
+- Body: JSON object with S3 upload information
 
-### GET /api/notification.report
+```json
+{
+  "success": true,
+  "etag": "\"d41d8cd98f00b204e9800998ecf8427e\"",
+  "fileName": "SAMPLE-001.pdf",
+  "path": "fsr/2024/SAMPLE-001.pdf",
+  "url": "https://your-bucket.s3.us-east-1.amazonaws.com/fsr/2024/SAMPLE-001.pdf",
+  "message": "PDF generated and uploaded to S3 successfully"
+}
+```
 
-Generates a sample PDF report for testing.
-
-**Response:**
-- Content-Type: `application/pdf`
-- Content-Disposition: `attachment; filename="notification-report.pdf"`
-- Body: PDF file buffer
 
 ## Supported Product Groups
 
@@ -122,23 +133,20 @@ Generates a sample PDF report for testing.
 - `managerSignature`: Base64 encoded signature image
 - `dontSentEmail`: Boolean flag to skip email sending
 - `filename`: Custom filename for the PDF
+- `s3Credentials`: S3 credentials object from collab project
+  - `accessKeyId`: AWS access key ID
+  - `secretAccessKey`: AWS secret access key
+  - `region`: AWS region (e.g., `us-east-1`)
+  - `bucketName`: S3 bucket name
+  - `keyPrefix`: Optional key prefix for S3 object path
 
 ## Usage Examples
-
-### Generate Sample Report (GET)
-
-```bash
-curl -X GET https://your-service.vercel.app/api/notification.report \
-  -H "Accept: application/pdf" \
-  --output sample-report.pdf
-```
 
 ### Generate Custom Report (POST)
 
 ```bash
 curl -X POST https://your-service.vercel.app/api/notification.report \
   -H "Content-Type: application/json" \
-  -H "Accept: application/pdf" \
   -d '{
     "call_no": "CALL-001",
     "product_group": "dpg",
@@ -166,17 +174,24 @@ curl -X POST https://your-service.vercel.app/api/notification.report \
       ]
     },
     "filename": "abc-company-report.pdf"
-  }' \
-  --output custom-report.pdf
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "etag": "\"d41d8cd98f00b204e9800998ecf8427e\"",
+  "fileName": "CALL-001.pdf",
+  "path": "fsr/2024/CALL-001.pdf",
+  "url": "https://your-bucket.s3.us-east-1.amazonaws.com/fsr/2024/CALL-001.pdf",
+  "message": "PDF generated and uploaded to S3 successfully"
+}
 ```
 
 ### JavaScript/Node.js Usage
 
 ```javascript
-// Generate sample report
-const response = await fetch('https://your-service.vercel.app/api/notification.report');
-const pdfBuffer = await response.arrayBuffer();
-
 // Generate custom report
 const customData = {
   call_no: 'CALL-001',
@@ -215,7 +230,9 @@ const response = await fetch('https://your-service.vercel.app/api/notification.r
   body: JSON.stringify(customData)
 });
 
-const pdfBuffer = await response.arrayBuffer();
+const result = await response.json();
+console.log('PDF uploaded to S3:', result.url);
+// Use result.url to access the PDF from S3
 ```
 
 ## Integration with Collab Project
@@ -256,7 +273,13 @@ const response = await fetch('https://your-reports-service.vercel.app/api/notifi
   body: JSON.stringify(reportData)
 });
 
-const pdfBuffer = await response.arrayBuffer();
+const result = await response.json();
+if (result.success) {
+  console.log('PDF uploaded to S3:', result.url);
+  // Use result.url to access the PDF from S3
+} else {
+  console.error('PDF generation failed:', result.error);
+}
 ```
 
 ## Local Development
@@ -286,14 +309,10 @@ const pdfBuffer = await response.arrayBuffer();
 
 4. **Test the API:**
    ```bash
-   # Generate sample report
-   curl -X GET http://localhost:3000/api/notification.report --output sample-report.pdf
-   
    # Generate custom report
    curl -X POST http://localhost:3000/api/notification.report \
      -H "Content-Type: application/json" \
-     -d '{"call_no":"TEST-001","product_group":"dpg"}' \
-     --output custom-report.pdf
+     -d '{"call_no":"CALL-001","product_group":"dpg"}'
    ```
 
 ## Deployment
@@ -319,9 +338,9 @@ const pdfBuffer = await response.arrayBuffer();
 
 Set these in your Vercel dashboard:
 
-- `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD`: `true`
-- `PUPPETEER_EXECUTABLE_PATH`: `/usr/bin/chromium-browser`
 - `NODE_ENV`: `production`
+
+**Note:** S3 credentials are provided by the collab project in the request payload, not as environment variables.
 
 ## Configuration
 
@@ -332,12 +351,12 @@ Set these in your Vercel dashboard:
   "version": 2,
   "functions": {
     "api/notification.report.js": {
-      "maxDuration": 30
+      "maxDuration": 60,
+      "memory": 2048
     }
   },
   "env": {
-    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
-    "PUPPETEER_EXECUTABLE_PATH": "/usr/bin/chromium-browser"
+    "NODE_ENV": "production"
   }
 }
 ```
@@ -362,10 +381,11 @@ Error responses include JSON with error details:
 
 ## Performance Considerations
 
-- **Cold Start**: First request may take longer due to Puppeteer initialization
-- **Memory Usage**: Puppeteer requires significant memory (512MB+ recommended)
-- **Timeout**: Set to 30 seconds maximum execution time
-- **Browser Reuse**: Browser instances are reused when possible
+- **Cold Start**: First request may take longer due to PDFKit initialization
+- **Memory Usage**: PDFKit requires moderate memory (512MB+ recommended)
+- **Timeout**: Set to 60 seconds maximum execution time
+- **S3 Upload**: PDFs are automatically uploaded to S3 for persistent storage
+- **Response Format**: Returns JSON with S3 URLs instead of PDF buffers
 
 ## Security Considerations
 
@@ -378,20 +398,26 @@ Error responses include JSON with error details:
 
 ### Common Issues
 
-1. **Browser initialization fails:**
-   - Ensure Puppeteer is properly installed
-   - Check Chromium executable path
-   - Verify system dependencies
+1. **S3 upload fails:**
+   - Verify S3 credentials are provided in request payload
+   - Check S3 bucket permissions
+   - Ensure bucket exists and is accessible
+   - Verify AWS credentials from collab project are valid
 
 2. **PDF generation timeout:**
    - Increase timeout in `vercel.json`
-   - Optimize HTML template size
+   - Optimize PDF template complexity
    - Check network connectivity
 
 3. **Memory issues:**
    - Reduce concurrent requests
-   - Optimize browser instance reuse
+   - Optimize PDF generation process
    - Check Vercel function memory limits
+
+4. **AWS SDK errors:**
+   - Verify AWS region is correct in s3Credentials
+   - Check IAM permissions for S3 access
+   - Ensure S3 credentials are properly provided by collab project
 
 ### Debug Mode
 

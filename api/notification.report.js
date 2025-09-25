@@ -1,226 +1,163 @@
-import { reportGenerationHelper } from '../helpers/reportGenerationHelper.js';
+import { generateDPGReport, generateThermalOrPowerReport, generateDCPSReport, generatePartReturnedAndConsumedTable, generateSafetyTable } from '../templates/reportTemplate.js';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-/**
- * Vercel Serverless Function for Notification Report Generation
- * Handles PDF generation and returns downloadable file
- * Compatible with collab project's notification.report API
- */
+// Function to upload PDF to S3 using credentials from collab project
+async function uploadToS3(bufferContent, fileName, s3Credentials, contentType = 'application/pdf') {
+	try {
+		if (!s3Credentials || !s3Credentials.bucketName || !s3Credentials.accessKeyId || !s3Credentials.secretAccessKey) {
+			throw new Error('S3 credentials are required from collab project');
+		}
 
-export default async function handler(req, res) {
-  console.log('Function started:', new Date().toISOString());
-  console.log('Method:', req.method);
-  console.log('Headers:', req.headers);
+		// Create S3 client with credentials from collab project
+		const s3Client = new S3Client({
+			region: s3Credentials.region || 'us-east-1',
+			credentials: {
+				accessKeyId: s3Credentials.accessKeyId,
+				secretAccessKey: s3Credentials.secretAccessKey,
+			},
+		});
 
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Auth-Token');
+		const key = s3Credentials.keyPrefix ? `${s3Credentials.keyPrefix}/${fileName}` : `fsr/${new Date().getFullYear()}/${fileName}`;
+		
+		const command = new PutObjectCommand({
+			Bucket: s3Credentials.bucketName,
+			Key: key,
+			Body: bufferContent,
+			ContentType: contentType,
+			ContentDisposition: `attachment; filename="${fileName}"`,
+		});
 
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    console.log('Handling OPTIONS request');
-    res.status(200).end();
-    return;
-  }
-
-  // Only allow GET and POST methods
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    console.log('Method not allowed:', req.method);
-    res.status(405).json({ 
-      error: 'Method not allowed',
-      message: 'Only GET and POST methods are supported'
-    });
-    return;
-  }
-
-  try {
-    console.log('Starting report generation...');
-    let reportData;
-    let filename = 'notification-report.pdf';
-    let productGroup = 'dpg'; // Default to DPG
-
-    if (req.method === 'POST') {
-      // Handle POST request with custom data
-      const { 
-        data, 
-        filename: customFilename, 
-        product_group,
-        call_no,
-        params,
-        dontSentEmail = false,
-        engineerSignature,
-        managerSignature,
-        formdata
-      } = req.body;
-      
-      if (!data && !call_no) {
-        res.status(400).json({
-          error: 'Bad request',
-          message: 'Report data or call_no is required in request body'
-        });
-        return;
-      }
-
-      // Set product group
-      if (product_group) {
-        productGroup = product_group.toLowerCase();
-      }
-
-      // Set filename
-      if (customFilename) {
-        filename = customFilename.endsWith('.pdf') ? customFilename : `${customFilename}.pdf`;
-      } else if (call_no) {
-        filename = `${call_no}.pdf`;
-      }
-
-      // Prepare report data
-      if (data) {
-        reportData = data;
-      } else {
-        // Generate report data from collab-style parameters
-        reportData = {
-          param: {
-            call_no: call_no || 'SAMPLE-001',
-            product_group: productGroup,
-            params: params ? JSON.stringify(params) : undefined,
-            engineerSignature: engineerSignature || '',
-            managerSignature: managerSignature || '',
-            dontSentEmail: dontSentEmail
-          },
-          paramObj: params || {},
-          formdata: formdata || {},
-          room: {
-            name: call_no ? call_no.toLowerCase() : 'sample',
-            customFields: {
-              engineerSignature: engineerSignature || '',
-              managerSignature: managerSignature || ''
-            }
-          },
-          logo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAAD8CAYAAADkDI70AAABgWlDQ1BzUkdCIElFQzYxOTY2LTIuMQAAKJF1kc8rw2Ecx18bmpimOFAOS+NkmpG4OGwxCoeZMly2736pbb59v5OWq3JVlLj4deAv4KqclSJScpQzcWF9fb7bakv2eXo+z+t5P5/Pp+f5PGANpZWMXu+BTDanBQM+50J40Wl7xUInNkYYiii6OjM3EaKmfT1ItNid26xVO+5fa47FdQUsjcJjiqrlhCeFp9dzqsm7wu1KKhITPhfu0+SCwvemHi3xm8nJEv+YrIWCfrC2CjuTVRytYiWlZYTl5bgy6TWlfB/zJfZ4dn5O1m6ZXegECeDDyRTj+BlmgFHxw7jx0i87auR7ivmzrEquIl4lj8YKSVLk6BN1TarHZU2IHpeRJm/2/29f9cSgt1Td7oOGF8P46AHbDhS2DeP72DAKJ1D3DFfZSv7qEYx8ir5d0VyH4NiEi+uKFt2Dyy3oeFIjWqQo1cm0JhLwfgYtYWi7haalUs/K55w+QmhDvuoG9g+gV+Idy7/KAmgT1d6GTAAAAAlwSFlzAAALEwAACxMBAJqcGAAAIABJREFUeJzt3XeYJGXV/vHvBmCJkgQFQQGxERATisALSFwWOCSXLIgioCg/wABmRMH4vhgwgzAsUWBJhxyWaEBMmNA2K0El57Th90fVsLPDzGx3T9Vzqqrvz3Xt5bo7U+eGZbv71PPUcyYgjWJmSwOrAS8b9mN5YAlg8fzHSD9fDHgGeBJ4asiPJ4f9/AHgrmE//uXuj6f4ZxQREREREWmiCdEBpHtmtgywAfDa/H/XYH4jvnRgtEeZ37D/Ffg1cAfwazXvIiIiIiIiY1ODXmFmNgFYk6wRH+yxAfAK6vVnN4+sYb9j6A93/3tkKBERERERkSqpU5PXeHlDvj6wVf5jc2DZ0FDluh+4CZgFzHL3PwTs',
-          tableHTML: '',
-          returnedEls: [],
-          issuedEls: []
-        };
-      }
-    } else {
-      // Handle GET request - generate sample report
-      reportData = {
-        param: {
-          call_no: 'SAMPLE-001',
-          product_group: 'dpg',
-          params: JSON.stringify({
-            customer_name: 'Sample Customer',
-            site_name: 'Sample Site',
-            engineer_name: 'John Doe',
-            report_date: new Date().toISOString().split('T')[0],
-            work_performed: 'Sample maintenance work performed',
-            recommendations: 'Sample recommendations for future maintenance'
-          }),
-          engineerSignature: '',
-          managerSignature: '',
-          dontSentEmail: true
-        },
-        paramObj: {
-          customer_name: 'Sample Customer',
-          site_name: 'Sample Site',
-          engineer_name: 'John Doe',
-          report_date: new Date().toISOString().split('T')[0],
-          work_performed: 'Sample maintenance work performed',
-          recommendations: 'Sample recommendations for future maintenance'
-        },
-        formdata: {
-          safety_observations: [
-            'All safety protocols were followed',
-            'Personal protective equipment was used',
-            'Work area was properly secured'
-          ],
-          work_performed: [
-            'System inspection completed',
-            'Preventive maintenance performed',
-            'Documentation updated'
-          ],
-          recommendations: [
-            'Schedule next maintenance in 6 months',
-            'Monitor system performance',
-            'Update maintenance procedures'
-          ]
-        },
-        room: {
-          name: 'sample',
-          customFields: {
-            engineerSignature: '',
-            managerSignature: ''
-          }
-        },
-        logo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAAD8CAYAAADkDI70AAABgWlDQ1BzUkdCIElFQzYxOTY2LTIuMQAAKJF1kc8rw2Ecx18bmpimOFAOS+NkmpG4OGwxCoeZMly2736pbb59v5OWq3JVlLj4deAv4KqclSJScpQzcWF9fb7bakv2eXo+z+t5P5/Pp+f5PGANpZWMXu+BTDanBQM+50J40Wl7xUInNkYYiii6OjM3EaKmfT1ItNid26xVO+5fa47FdQUsjcJjiqrlhCeFp9dzqsm7wu1KKhITPhfu0+SCwvemHi3xm8nJEv+YrIWCfrC2CjuTVRytYiWlZYTl5bgy6TWlfB/zJfZ4dn5O1m6ZXegECeDDyRTj+BlmgFHxw7jx0i87auR7ivmzrEquIl4lj8YKSVLk6BN1TarHZU2IHpeRJm/2/29f9cSgt1Td7oOGF8P46AHbDhS2DeP72DAKJ1D3DFfZSv7qEYx8ir5d0VyH4NiEi+uKFt2Dyy3oeFIjWqQo1cm0JhLwfgYtYWi7haalUs/K55w+QmhDvuoG9g+gV+Idy7/KAmgT1d6GTAAAAAlwSFlzAAALEwAACxMBAJqcGAAAIABJREFUeJzt3XeYJGXV/vHvBmCJkgQFQQGxERATisALSFwWOCSXLIgioCg/wABmRMH4vhgwgzAsUWBJhxyWaEBMmNA2K0El57Th90fVsLPDzGx3T9Vzqqrvz3Xt5bo7U+eGZbv71PPUcyYgjWJmSwOrAS8b9mN5YAlg8fzHSD9fDHgGeBJ4asiPJ4f9/AHgrmE//uXuj6f4ZxQREREREWmiCdEBpHtmtgywAfDa/H/XYH4jvnRgtEeZ37D/Ffg1cAfwazXvIiIiIiIiY1ODXmFmNgFYk6wRH+yxAfAK6vVnN4+sYb9j6A93/3tkKBERERERkSqpU5PXeHlDvj6wVf5jc2DZ0FDluh+4CZgFzHL3PwTs',
-        tableHTML: '',
-        returnedEls: [],
-        issuedEls: []
-      };
-    }
-
-    // Generate PDF based on product group
-    console.log(`Generating ${productGroup} notification report...`);
-    let pdfBuffer;
-
-    switch (productGroup.toLowerCase()) {
-      case 'dpg':
-        pdfBuffer = await reportGenerationHelper.generateDPGReport(reportData);
-        break;
-      case 'air':
-      case 'power':
-        pdfBuffer = await reportGenerationHelper.generateThermalOrPowerReport(reportData);
-        break;
-      case 'dcps':
-        pdfBuffer = await reportGenerationHelper.generateDCPSReport(reportData);
-        break;
-      default:
-        // Default to DPG if unknown product group
-        pdfBuffer = await reportGenerationHelper.generateDPGReport(reportData);
-        break;
-    }
-
-    // Set response headers for PDF download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-
-    // Send PDF buffer
-    res.status(200).send(pdfBuffer);
-
-    console.log(`PDF content generated successfully for ${productGroup} type (${pdfBuffer.length} bytes)`);
-
-  } catch (error) {
-    console.error('Error generating notification report:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to generate notification report',
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      timestamp: new Date().toISOString()
-    });
-  } finally {
-    // Clean up browser instance
-    try {
-      console.log('Cleaning up browser...');
-      await reportGenerationHelper.closeBrowser();
-      console.log('Browser cleanup completed');
-    } catch (cleanupError) {
-      console.error('Error during cleanup:', cleanupError);
-    }
-  }
+		const result = await s3Client.send(command);
+		console.log(`PDF uploaded to S3 successfully: ${key}`);
+		
+		return {
+			success: true,
+			key,
+			etag: result.ETag,
+			url: `https://${s3Credentials.bucketName}.s3.${s3Credentials.region || 'us-east-1'}.amazonaws.com/${key}`,
+		};
+	} catch (error) {
+		console.error('S3 upload error:', error);
+		throw new Error(`Failed to upload PDF to S3: ${error.message}`);
+	}
 }
 
-// Export for Vercel
-export const config = {
-  api: {
-    responseLimit: '10mb',
-  },
-};
+export default async function handler(req, res) {
+	// Set CORS headers for collab project integration
+	res.setHeader('Access-Control-Allow-Origin', '*');
+	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+	res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	
+	if (req.method === 'OPTIONS') {
+		res.status(200).end();
+		return;
+	}
+
+	if (req.method !== 'POST') {
+		return res.status(405).json({ error: 'Method not allowed' });
+	}
+
+	try {
+		const userAgent = req.headers['user-agent'] || '';
+		console.log(`notification.report Request Started at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+		console.log(`Request payload: ${JSON.stringify({ Method: 'POST', payload: req.body })}`);
+		
+		const param = req.body;
+		const paramObj = param.params ? JSON.parse(param.params) : undefined;
+		
+		// Extract S3 credentials from collab project
+		const s3Credentials = param.s3Credentials || param.s3_credentials;
+		
+		// Mock room data for serverless environment
+		const room = {
+			name: param.call_no ? param.call_no.toLowerCase() : 'general',
+			customFields: {}
+		};
+
+		const { issuedEls, returnedEls } = generatePartReturnedAndConsumedTable(param, 3, false);
+
+		// Mock logo for testing - replace with actual logo from collab project
+		const logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAAD8CAYAAADkDI70AAABgWlDQ1BzUkdCIElFQzYxOTY2LTIuMQAAKJF1kc8rw2Ecx18bmpimOFAOS+NkmpG4OGwxCoeZMly2736pbb59v5OWq3JVlLj4deAv4KqclSJScpQzcWF9fb7bakv2eXo+z+t5P5/Pp+f5PGANpZWMXu+BTDanBQM+50J40Wl7xUInNkYYiii6OjM3EaKmfT1ItNid26xVO+5fa47FdQUsjcJjiqrlhCeFp9dzqsm7wu1KKhITPhfu0+SCwvemHi3xm8nJEv+YrIWCfrC2CjuTVRytYiWlZYTl5bgy6TWlfB/zJfZ4dn5O1m6ZXegECeDDyRTj+BlmgFHxw7jx0i87auR7ivmzrEquIl4lj8YKSVLk6BN1TarHZU2IHpeRJm/2/29f9cSgt1Td7oOGF8P46AHbDhS2DeP72DAKJ1D3DFfZSv7qEYx8ir5d0VyH4NiEi+uKFt2Dyy3oeFIjWqQo1cm0JhLwfgYtYWi7aalUs/K55w+QmhDvuoG9g+gV+Idy7/KAmgT1d6GTAAAAAlwSFlzAAALEwAACxMBAJqcGAAAIABJREFUeJzt3XeYJGXV/vHvBmCJkgQFQQGxERATisALSFwWOCSXLIgioCg/wABmRMH4vhgwgzAsUWBJhxyWaEBMmNA2K0El57Th90fVsLPDzGx3T9Vzqqrvz3Xt5bo7U+eGZbn71PPUcyYgjWJmSwOrAS8b9mN5YAlg8fzHSD9fDHgGeBJ4asiPJ4f9/AHgrmE//uXuj6f4ZxQREREREWmiCdEBpHtmtgywAfDa/H/XYH4jvnRgtEeZ37D/Ffg1cAfwazXvIiIiIiIiY1ODXmFmNgFYk6wRH+yxAfAK6vVnN4+sYb9j6A93/3tkKBERERERkSqpU5PXeHlDvj6wVf5jc2DZ0FDluh+4CZgFzHL3PwTs';
+
+		const finalObject = {
+			param,
+			room,
+			paramObj,
+			logo,
+			tableHTML: param.product_group.toLowerCase() !== 'dcps' ? generateSafetyTable(paramObj?.formdata) : "",
+			returnedEls,
+			issuedEls,
+		};
+
+		let bufferContent = '';
+		
+		// Generate PDF using PDFKit based on product group
+		switch (param.product_group.toLowerCase()) {
+			case 'dpg':
+				try {
+					bufferContent = await generateDPGReport(finalObject);
+				} catch (err) {
+					console.log("DPG report generation error:", err);
+					// Retry once after a short delay
+					await new Promise(resolve => setTimeout(resolve, 1000));
+					bufferContent = await generateDPGReport(finalObject);
+				}
+				break;
+		
+			case 'air':
+			case 'power':
+				try {
+					bufferContent = await generateThermalOrPowerReport(finalObject);
+				} catch (err) {
+					console.log("Thermal/Power report generation error:", err);
+					await new Promise(resolve => setTimeout(resolve, 1000));
+					bufferContent = await generateThermalOrPowerReport(finalObject);
+				}
+				break;
+				
+			case 'dcps':
+				try {
+					bufferContent = await generateDCPSReport(finalObject);
+				} catch (err) {
+					console.log("DCPS report generation error:", err);
+					await new Promise(resolve => setTimeout(resolve, 1000));
+					bufferContent = await generateDCPSReport(finalObject);
+				}
+				break;
+		
+			default:
+				throw new Error('The required "type" param provided does not match any type');
+		}
+
+		if (!bufferContent || !bufferContent.length) {
+			throw new Error('PDF content is not generated or undefined');
+		} else {
+			console.log(`PDF content Generated successfully for ${param.product_group} type`);
+		}
+
+		// Upload PDF to S3 using credentials from collab project
+		const fileName = `${param.call_no || 'report'}.pdf`;
+		const uploadResult = await uploadToS3(bufferContent, fileName, s3Credentials);
+		
+		console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+		console.log(`Response: ${JSON.stringify({ success: true, etag: uploadResult.etag, fileName, path: uploadResult.key, url: uploadResult.url })}`);
+
+		// Return S3 upload information
+		res.status(200).json({
+			success: true,
+			etag: uploadResult.etag,
+			fileName,
+			path: uploadResult.key,
+			url: uploadResult.url,
+			message: 'PDF generated and uploaded to S3 successfully'
+		});
+
+	} catch (error) {
+		console.error('Error generating report:', error);
+		res.status(500).json({ 
+			error: 'Failed to generate report', 
+			message: error.message,
+			success: false 
+		});
+	}
+}

@@ -4,30 +4,9 @@
     "api/notification.report.js": {
       "maxDuration": 60,
       "memory": 2048
-    },
-    "api/test.js": {
-      "maxDuration": 10,
-      "memory": 256
-    },
-    "api/simple-report.js": {
-      "maxDuration": 30,
-      "memory": 1024
-    },
-    "api/chrome-test.js": {
-      "maxDuration": 15,
-      "memory": 256
-    },
-    "api/pdfkit-report.js": {
-      "maxDuration": 10,
-      "memory": 256
-    },
-    "api/html-pdf-report.js": {
-      "maxDuration": 15,
-      "memory": 512
     }
   },
   "env": {
-    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "false",
-    "PUPPETEER_CACHE_DIR": "/tmp/.cache/puppeteer"
+    "NODE_ENV": "production"
   }
 }
