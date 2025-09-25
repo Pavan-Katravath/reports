@@ -1,5 +1,61 @@
 import { generateDPGReport, generateThermalOrPowerReport, generateDCPSReport, generatePartReturnedAndConsumedTable, generateSafetyTable } from '../templates/reportTemplate.js';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
+
+// Function to validate S3/MinIO connection
+async function validateConnection(s3Client, s3Credentials) {
+	try {
+		// Try to list buckets to validate connection
+		const { ListBucketsCommand } = await import('@aws-sdk/client-s3');
+		await s3Client.send(new ListBucketsCommand({}));
+		console.log('S3/MinIO connection validated successfully');
+		return true;
+	} catch (error) {
+		console.error('S3/MinIO connection validation failed:', error.message);
+		
+		// Provide specific error messages based on error type
+		if (error.code === 'ECONNREFUSED') {
+			const endpoint = s3Credentials.endpoint || s3Credentials.url || 'AWS S3';
+			throw new Error(`Cannot connect to ${endpoint}. Please ensure the service is running and accessible.`);
+		} else if (error.code === 'ENOTFOUND') {
+			throw new Error(`Cannot resolve hostname for ${s3Credentials.endpoint || s3Credentials.url}. Please check the endpoint URL.`);
+		} else if (error.code === 'ECONNRESET') {
+			throw new Error(`Connection was reset by the server. Please check your credentials and endpoint configuration.`);
+		} else if (error.name === 'InvalidAccessKeyId' || error.name === 'SignatureDoesNotMatch') {
+			throw new Error(`Invalid credentials. Please check your access key ID and secret access key.`);
+		} else {
+			throw new Error(`Connection failed: ${error.message}`);
+		}
+	}
+}
+
+// Function to check if bucket exists and create it if needed (for MinIO)
+async function ensureBucketExists(s3Client, bucketName, s3Credentials) {
+	try {
+		// Check if bucket exists
+		await s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
+		console.log(`Bucket ${bucketName} exists`);
+		return true;
+	} catch (error) {
+		if (error.name === 'NoSuchBucket' || error.name === 'NotFound') {
+			// Bucket doesn't exist, try to create it (only for MinIO)
+			if (s3Credentials.endpoint || s3Credentials.url) {
+				try {
+					console.log(`Creating bucket ${bucketName} for MinIO...`);
+					await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+					console.log(`Bucket ${bucketName} created successfully`);
+					return true;
+				} catch (createError) {
+					console.error(`Failed to create bucket ${bucketName}:`, createError.message);
+					throw new Error(`Bucket ${bucketName} does not exist and could not be created: ${createError.message}`);
+				}
+			} else {
+				throw new Error(`Bucket ${bucketName} does not exist. Please create it manually for AWS S3.`);
+			}
+		} else {
+			throw error;
+		}
+	}
+}
 
 // Function to upload PDF to S3 using credentials from collab project
 async function uploadToS3(bufferContent, fileName, s3Credentials, contentType = 'application/pdf') {
@@ -25,6 +81,12 @@ async function uploadToS3(bufferContent, fileName, s3Credentials, contentType = 
 		}
 
 		const s3Client = new S3Client(s3ClientConfig);
+
+		// Validate connection before proceeding
+		await validateConnection(s3Client, s3Credentials);
+
+		// Ensure bucket exists before uploading
+		await ensureBucketExists(s3Client, s3Credentials.bucketName, s3Credentials);
 
 		const key = s3Credentials.keyPrefix ? `${s3Credentials.keyPrefix}/${fileName}` : `fsr/${new Date().getFullYear()}/${fileName}`;
 		
@@ -132,7 +194,8 @@ export default async function handler(req, res) {
 		const { issuedEls, returnedEls } = generatePartReturnedAndConsumedTable(param, 3, false);
 
 		// Mock logo for testing - replace with actual logo from collab project
-		const logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAAD8CAYAAADkDI70AAABgWlDQ1BzUkdCIElFQzYxOTY2LTIuMQAAKJF1kc8rw2Ecx18bmpimOFAOS+NkmpG4OGwxCoeZMly2736pbb59v5OWq3JVlLj4deAv4KqclSJScpQzcWF9fb7bakv2eXo+z+t5P5/Pp+f5PGANpZWMXu+BTDanBQM+50J40Wl7xUInNkYYiii6OjM3EaKmfT1ItNid26xVO+5fa47FdQUsjcJjiqrlhCeFp9dzqsm7wu1KKhITPhfu0+SCwvemHi3xm8nJEv+YrIWCfrC2CjuTVRytYiWlZYTl5bgy6TWlfB/zJfZ4dn5O1m6ZXegECeDDyRTj+BlmgFHxw7jx0i87auR7ivmzrEquIl4lj8YKSVLk6BN1TarHZU2IHpeRJm/2/29f9cSgt1Td7oOGF8P46AHbDhS2DeP72DAKJ1D3DFfZSv7qEYx8ir5d0VyH4NiEi+uKFt2Dyy3oeFIjWqQo1cm0JhLwfgYtYWi7aalUs/K55w+QmhDvuoG9g+gV+Idy7/KAmgT1d6GTAAAAAlwSFlzAAALEwAACxMBAJqcGAAAIABJREFUeJzt3XeYJGXV/vHvBmCJkgQFQQGxERATisALSFwWOCSXLIgioCg/wABmRMH4vhgwgzAsUWBJhxyWaEBMmNA2K0El57Th90fVsLPDzGx3T9Vzqqrvz3Xt5bo7U+eGZbn71PPUcyYgjWJmSwOrAS8b9mN5YAlg8fzHSD9fDHgGeBJ4asiPJ4f9/AHgrmE//uXuj6f4ZxQREREREWmiCdEBpHtmtgywAfDa/H/XYH4jvnRgtEeZ37D/Ffg1cAfwazXvIiIiIiIiY1ODXmFmNgFYk6wRH+yxAfAK6vVnN4+sYb9j6A93/3tkKBERERERkSqpU5PXeHlDvj6wVf5jc2DZ0FDluh+4CZgFzHL3PwTs';
+		// Using a simple, valid base64 encoded 1x1 transparent PNG
+		const logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 		const finalObject = {
 			param,
@@ -192,20 +255,39 @@ export default async function handler(req, res) {
 
 		// Upload PDF to S3 using credentials from collab project
 		const fileName = `${param.call_no || 'report'}.pdf`;
-		const uploadResult = await uploadToS3(bufferContent, fileName, s3Credentials);
 		
-		console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
-		console.log(`Response: ${JSON.stringify({ success: true, etag: uploadResult.etag, fileName, path: uploadResult.key, url: uploadResult.url })}`);
+		try {
+			const uploadResult = await uploadToS3(bufferContent, fileName, s3Credentials);
+			
+			console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+			console.log(`Response: ${JSON.stringify({ success: true, etag: uploadResult.etag, fileName, path: uploadResult.key, url: uploadResult.url })}`);
 
-		// Return S3 upload information
-		res.status(200).json({
-			success: true,
-			etag: uploadResult.etag,
-			fileName,
-			path: uploadResult.key,
-			url: uploadResult.url,
-			message: 'PDF generated and uploaded to S3 successfully'
-		});
+			// Return S3 upload information
+			res.status(200).json({
+				success: true,
+				etag: uploadResult.etag,
+				fileName,
+				path: uploadResult.key,
+				url: uploadResult.url,
+				message: 'PDF generated and uploaded to S3 successfully'
+			});
+		} catch (uploadError) {
+			console.warn('S3 upload failed, returning PDF as base64:', uploadError.message);
+			
+			// Fallback: return PDF as base64 when S3 is unavailable
+			const pdfBase64 = bufferContent.toString('base64');
+			
+			console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+			console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 upload failed)' })}`);
+
+			res.status(200).json({
+				success: true,
+				fileName,
+				pdfBase64,
+				message: 'PDF generated successfully (S3 upload failed)',
+				warning: uploadError.message
+			});
+		}
 
 	} catch (error) {
 		console.error('Error generating report:', error);

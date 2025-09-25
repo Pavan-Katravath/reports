@@ -13,6 +13,10 @@ A serverless notification report generation service built for Vercel, compatible
 - 📊 Compatible with collab project's API structure
 - ☁️ Automatic S3 upload for generated PDFs
 - 🔗 Returns S3 URLs for PDF access
+- 🪣 **NEW**: Automatic MinIO bucket creation
+- 🔧 **NEW**: Enhanced error handling for S3/MinIO operations
+- 🧪 **NEW**: Comprehensive test suite
+- 🐛 **NEW**: Fixed logo processing issues
 
 ## Project Structure
 
@@ -108,6 +112,56 @@ Generates a PDF report based on the provided data.
 - **air**: Thermal/Power Field Service Report
 - **power**: Thermal/Power Field Service Report
 - **dcps**: DCPS Field Service Report
+
+## MinIO Support
+
+This service now includes enhanced support for MinIO (S3-compatible storage):
+
+- **Automatic Bucket Creation**: Creates buckets automatically for MinIO (not AWS S3)
+- **Flexible Endpoint Configuration**: Supports both `endpoint` and `url` parameters
+- **Path Style URLs**: Properly configured for MinIO's path-style URLs
+- **Error Handling**: Improved error messages for bucket operations
+
+### MinIO Configuration Example
+
+```json
+{
+  "s3Credentials": {
+    "bucketName": "reports-bucket",
+    "accessKeyId": "minioadmin",
+    "secretAccessKey": "minioadmin",
+    "endpoint": "http://localhost:9000",
+    "region": "us-east-1"
+  }
+}
+```
+
+## Testing
+
+A comprehensive test suite is included to verify all functionality:
+
+### Running Tests
+
+```bash
+# Run all tests
+node test-api.js
+
+# Run specific test
+node test-api.js "DPG Report with MinIO"
+
+# Show help
+node test-api.js --help
+```
+
+### Available Tests
+
+- DPG Report with MinIO
+- Thermal Report with MinIO  
+- Power Report with MinIO
+- DCPS Report with MinIO
+- Invalid Product Group (error handling)
+- Missing S3 Credentials (error handling)
+- Invalid S3 Credentials (error handling)
 
 ## Request Parameters
 
