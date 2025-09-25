@@ -8,14 +8,23 @@ async function uploadToS3(bufferContent, fileName, s3Credentials, contentType = 
 			throw new Error('S3 credentials are required from collab project');
 		}
 
-		// Create S3 client with credentials from collab project
-		const s3Client = new S3Client({
+		// Create S3 client with credentials from collab project (supports both AWS S3 and MinIO)
+		const s3ClientConfig = {
 			region: s3Credentials.region || 'us-east-1',
 			credentials: {
 				accessKeyId: s3Credentials.accessKeyId,
 				secretAccessKey: s3Credentials.secretAccessKey,
 			},
-		});
+		};
+
+		// If MinIO endpoint is provided, configure for MinIO
+		if (s3Credentials.endpoint || s3Credentials.url) {
+			s3ClientConfig.endpoint = s3Credentials.endpoint || s3Credentials.url;
+			s3ClientConfig.forcePathStyle = true; // Required for MinIO
+			s3ClientConfig.signatureVersion = 'v4';
+		}
+
+		const s3Client = new S3Client(s3ClientConfig);
 
 		const key = s3Credentials.keyPrefix ? `${s3Credentials.keyPrefix}/${fileName}` : `fsr/${new Date().getFullYear()}/${fileName}`;
 		
@@ -30,11 +39,22 @@ async function uploadToS3(bufferContent, fileName, s3Credentials, contentType = 
 		const result = await s3Client.send(command);
 		console.log(`PDF uploaded to S3 successfully: ${key}`);
 		
+		// Generate appropriate URL based on whether it's MinIO or AWS S3
+		let url;
+		if (s3Credentials.endpoint || s3Credentials.url) {
+			// MinIO URL format
+			const endpoint = s3Credentials.endpoint || s3Credentials.url;
+			url = `${endpoint}/${s3Credentials.bucketName}/${key}`;
+		} else {
+			// AWS S3 URL format
+			url = `https://${s3Credentials.bucketName}.s3.${s3Credentials.region || 'us-east-1'}.amazonaws.com/${key}`;
+		}
+
 		return {
 			success: true,
 			key,
 			etag: result.ETag,
-			url: `https://${s3Credentials.bucketName}.s3.${s3Credentials.region || 'us-east-1'}.amazonaws.com/${key}`,
+			url,
 		};
 	} catch (error) {
 		console.error('S3 upload error:', error);
@@ -65,8 +85,43 @@ export default async function handler(req, res) {
 		const param = req.body;
 		const paramObj = param.params ? JSON.parse(param.params) : undefined;
 		
-		// Extract S3 credentials from collab project
-		const s3Credentials = param.s3Credentials || param.s3_credentials;
+		// Extract S3 credentials from collab project - try multiple possible formats
+		let s3Credentials = param.s3Credentials || param.s3_credentials || param.s3 || param.aws || param.awsCredentials;
+		
+		// If credentials are nested in params, try to extract them
+		if (!s3Credentials && paramObj) {
+			s3Credentials = paramObj.s3Credentials || paramObj.s3_credentials || paramObj.s3 || paramObj.aws || paramObj.awsCredentials;
+		}
+		
+		// Fallback to environment variables if no credentials provided in request
+		if (!s3Credentials && (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_S3_BUCKET)) {
+			s3Credentials = {
+				bucketName: process.env.AWS_S3_BUCKET,
+				accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+				secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+				region: process.env.AWS_REGION || 'us-east-1',
+				keyPrefix: process.env.AWS_S3_KEY_PREFIX || 'fsr'
+			};
+			
+			// Add MinIO endpoint if provided
+			if (process.env.MINIO_ENDPOINT || process.env.MINIO_URL) {
+				s3Credentials.endpoint = process.env.MINIO_ENDPOINT || process.env.MINIO_URL;
+			}
+			
+			console.log('Using environment variables for S3/MinIO credentials');
+		}
+		
+		// Debug logging for S3 credentials
+		console.log('S3 Credentials Debug:', {
+			hasS3Credentials: !!param.s3Credentials,
+			hasS3CredentialsAlt: !!param.s3_credentials,
+			hasS3: !!param.s3,
+			hasAws: !!param.aws,
+			hasAwsCredentials: !!param.awsCredentials,
+			paramObjKeys: paramObj ? Object.keys(paramObj) : 'no paramObj',
+			s3CredentialsKeys: s3Credentials ? Object.keys(s3Credentials) : 'none',
+			allParamKeys: Object.keys(param)
+		});
 		
 		// Mock room data for serverless environment
 		const room = {
