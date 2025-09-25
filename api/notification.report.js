@@ -279,19 +279,34 @@ export default async function handler(req, res) {
 		if (!s3Credentials || !s3Credentials.accessKeyId || !s3Credentials.secretAccessKey || !s3Credentials.bucketName) {
 			console.warn('Invalid or missing S3 credentials, returning PDF as base64');
 			
-			// Return PDF as base64 when S3 credentials are missing
-			const pdfBase64 = bufferContent.toString('base64');
+			// Check if client wants direct PDF response
+			const returnDirectPDF = param.returnDirectPDF || param.return_pdf_direct;
 			
-			console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
-			console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 credentials missing)' })}`);
+			if (returnDirectPDF) {
+				// Return PDF directly with proper headers
+				res.setHeader('Content-Type', 'application/pdf');
+				res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				res.setHeader('Content-Length', bufferContent.length);
+				
+				console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+				console.log(`Response: Direct PDF response (${bufferContent.length} bytes)`);
+				
+				res.status(200).send(bufferContent);
+			} else {
+				// Return PDF as base64 when S3 credentials are missing
+				const pdfBase64 = bufferContent.toString('base64');
+				
+				console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+				console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 credentials missing)' })}`);
 
-			res.status(200).json({
-				success: true,
-				fileName,
-				pdfBase64,
-				message: 'PDF generated successfully (S3 credentials missing)',
-				warning: 'S3 credentials are missing or invalid. Please provide valid S3 credentials in the request payload.'
-			});
+				res.status(200).json({
+					success: true,
+					fileName,
+					pdfBase64,
+					message: 'PDF generated successfully (S3 credentials missing)',
+					warning: 'S3 credentials are missing or invalid. Please provide valid S3 credentials in the request payload.'
+				});
+			}
 		} else {
 			try {
 				const uploadResult = await uploadToS3(bufferContent, fileName, s3Credentials);
@@ -311,19 +326,34 @@ export default async function handler(req, res) {
 			} catch (uploadError) {
 				console.warn('S3 upload failed, returning PDF as base64:', uploadError.message);
 				
-				// Fallback: return PDF as base64 when S3 is unavailable
-				const pdfBase64 = bufferContent.toString('base64');
+				// Check if client wants direct PDF response
+				const returnDirectPDF = param.returnDirectPDF || param.return_pdf_direct;
 				
-				console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
-				console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 upload failed)' })}`);
+				if (returnDirectPDF) {
+					// Return PDF directly with proper headers
+					res.setHeader('Content-Type', 'application/pdf');
+					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+					res.setHeader('Content-Length', bufferContent.length);
+					
+					console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+					console.log(`Response: Direct PDF response (${bufferContent.length} bytes) - S3 upload failed`);
+					
+					res.status(200).send(bufferContent);
+				} else {
+					// Fallback: return PDF as base64 when S3 is unavailable
+					const pdfBase64 = bufferContent.toString('base64');
+					
+					console.log(`notification.report Response at ${new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, timeZoneName: 'short' }).format(Date.now())}`);
+					console.log(`Response: ${JSON.stringify({ success: true, fileName, pdfBase64: '[base64 data]', message: 'PDF generated successfully (S3 upload failed)' })}`);
 
-				res.status(200).json({
-					success: true,
-					fileName,
-					pdfBase64,
-					message: 'PDF generated successfully (S3 upload failed)',
-					warning: uploadError.message
-				});
+					res.status(200).json({
+						success: true,
+						fileName,
+						pdfBase64,
+						message: 'PDF generated successfully (S3 upload failed)',
+						warning: uploadError.message
+					});
+				}
 			}
 		}
 
