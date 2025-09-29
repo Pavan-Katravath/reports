@@ -1,4 +1,4 @@
-import { generateDPGReport as generateDPGReportPDF, generateThermalOrPowerReport as generateThermalOrPowerReportPDF, generateDCPSReport as generateDCPSReportPDF } from '../templates/reportTemplate.js';
+import { generateDPGReport as generateDPGReportPDF, generateThermalOrPowerReport as generateThermalOrPowerReportPDF, generateDCPSReport as generateDCPSReportPDF, generateAirReport as generateAirReportPDF } from '../templates/reportTemplate.js';
 
 /**
  * PDF Generation Helper using PDFKit
@@ -57,6 +57,21 @@ export class ReportGenerationHelper {
       throw new Error(`DCPS report generation failed: ${error.message}`);
     }
   }
+  /**
+   * Generate Air Report PDF using custom HTML template
+   * @param {Object} finalObject - Report data object
+   * @returns {Promise<Buffer>} PDF buffer
+   */
+  async generateAirReport(finalObject) {
+    try {
+      // Generate PDF using PDFKit-based Air report function with custom HTML template
+      const pdfBuffer = await generateAirReportPDF(finalObject);
+      return pdfBuffer;
+    } catch (error) {
+      console.error('Air report generation failed:', error);
+      throw new Error(`Air report generation failed: ${error.message}`);
+    }
+  }
 
 }
 
@@ -70,6 +85,6 @@ export const generateDPGReport = (finalObject) =>
 export const generateThermalOrPowerReport = (finalObject) => 
   reportGenerationHelper.generateThermalOrPowerReport(finalObject);
 
-export const generateDCPSReport = (finalObject) => 
-  reportGenerationHelper.generateDCPSReport(finalObject);
+export const generateAirReport = (finalObject) => 
+  reportGenerationHelper.generateAirReport(finalObject);
 
