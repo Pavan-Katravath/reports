@@ -97,3 +97,13 @@ Thumbs.db
 # Test output
 test-reports/
 *.pdf
+
+# Test files with credentials
+test-minio-actual.js
+
+# Environment example files
+.env.example
+env.example
+
+# Documentation files
+*.md
