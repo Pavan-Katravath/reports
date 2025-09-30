@@ -440,30 +440,18 @@ export default async function handler(req, res) {
 			s3Credentials = paramObj.s3Credentials || paramObj.s3_credentials || paramObj.s3 || paramObj.aws || paramObj.awsCredentials;
 		}
 		
-		// Fallback to environment variables if no credentials provided in request
-		if (!s3Credentials && (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_S3_BUCKET)) {
+		// Fallback to FileUpload_S3_* environment variables (MinIO configuration)
+		if (!s3Credentials && (process.env.FileUpload_S3_AWSAccessKeyId && process.env.FileUpload_S3_AWSSecretAccessKey && process.env.FileUpload_S3_Bucket)) {
 			s3Credentials = {
-				bucketName: process.env.AWS_S3_BUCKET,
-				accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-				secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-				region: process.env.AWS_REGION || 'us-east-1',
-				keyPrefix: process.env.AWS_S3_KEY_PREFIX || 'fsr'
+				bucketName: process.env.FileUpload_S3_Bucket,
+				accessKeyId: process.env.FileUpload_S3_AWSAccessKeyId,
+				secretAccessKey: process.env.FileUpload_S3_AWSSecretAccessKey,
+				region: process.env.FileUpload_S3_Region || 'us-east-1',
+				endpoint: process.env.FileUpload_S3_BucketURL,
+				forcePathStyle: process.env.FileUpload_S3_ForcePathStyle === 'true' || true
 			};
 			
-			// Add MinIO endpoint if provided (but validate it's not localhost in production)
-			if (process.env.MINIO_ENDPOINT || process.env.MINIO_URL) {
-				const endpoint = process.env.MINIO_ENDPOINT || process.env.MINIO_URL;
-				
-				// Prevent localhost endpoints in production
-				if (process.env.NODE_ENV === 'production' && (endpoint.includes('localhost') || endpoint.includes('127.0.0.1'))) {
-					console.warn('MinIO endpoint is set to localhost in production environment. This will likely fail.');
-					console.warn('Please configure a proper MinIO endpoint or use AWS S3 instead.');
-				}
-				
-				s3Credentials.endpoint = endpoint;
-			}
-			
-			console.log('Using environment variables for S3/MinIO credentials');
+			console.log('Using FileUpload_S3_* environment variables for MinIO credentials');
 		}
 		
 		// Debug logging for S3 credentials
@@ -477,7 +465,15 @@ export default async function handler(req, res) {
 			s3CredentialsKeys: s3Credentials ? Object.keys(s3Credentials) : 'none',
 			allParamKeys: Object.keys(param),
 			hasEndpoint: s3Credentials ? !!s3Credentials.endpoint : false,
-			endpoint: s3Credentials ? s3Credentials.endpoint : 'none'
+			endpoint: s3Credentials ? s3Credentials.endpoint : 'none',
+			envVars: {
+				FileUpload_S3_AWSAccessKeyId: !!process.env.FileUpload_S3_AWSAccessKeyId,
+				FileUpload_S3_AWSSecretAccessKey: !!process.env.FileUpload_S3_AWSSecretAccessKey,
+				FileUpload_S3_Bucket: !!process.env.FileUpload_S3_Bucket,
+				FileUpload_S3_Region: !!process.env.FileUpload_S3_Region,
+				FileUpload_S3_BucketURL: !!process.env.FileUpload_S3_BucketURL,
+				FileUpload_S3_ForcePathStyle: !!process.env.FileUpload_S3_ForcePathStyle
+			}
 		});
 		
 		// Validate S3 credentials before proceeding
