@@ -343,9 +343,9 @@ async function s3FSRFileOpertations(type, Key, Body = '', call_no = '', path = '
 
 		const s3Client = new S3Client(s3ClientConfig);
 
-		// Build bucket name with path (matching collab project pattern)
-		const bucketName = path ? `${s3Credentials.bucketName}/${path}` : s3Credentials.bucketName;
-		const fullKey = Key;
+		// Use bucket name as-is (path should be part of the Key, not Bucket)
+		const bucketName = s3Credentials.bucketName;
+		const fullKey = path ? `${path}/${Key}` : Key;
 
 		switch (type) {
 			case 'post':

@@ -101,6 +101,9 @@ test-reports/
 # Test files with credentials
 test-minio-actual.js
 
+# CORS policy files
+r2-cors-policy.json
+
 # Environment example files
 .env.example
 env.example
