@@ -408,13 +408,7 @@ export async function generateAirReport(finalObject) {
             });
             doc.on('error', reject);
 
-            // Generate the HTML template with actual data
-            const htmlTemplate = generateAirReportHTML(finalObject);
-            
-            // Convert HTML to PDF-friendly content
-            const pdfContent = convertHTMLToPDFContent(htmlTemplate);
-            
-            // Add content to PDF
+            // Add content to PDF directly from data
             let yPosition = 50;
             
             // Add logo if available
@@ -429,26 +423,116 @@ export async function generateAirReport(finalObject) {
                 }
             }
 
-            // Add each section of the PDF content
-            pdfContent.forEach(section => {
-                if (section.type === 'title') {
-                    doc.fontSize(18).text(section.text, 50, yPosition);
-                    yPosition += 30;
-                } else if (section.type === 'subtitle') {
-                    doc.fontSize(14).text(section.text, 50, yPosition);
-                    yPosition += 20;
-                } else if (section.type === 'text') {
-                    doc.fontSize(10).text(section.text, 50, yPosition, { width: 500 });
-                    yPosition += 15;
-                } else if (section.type === 'table') {
-                    // Add table content
-                    section.rows.forEach(row => {
-                        doc.fontSize(9).text(row, 50, yPosition, { width: 500 });
+            // Add title and subtitle
+            doc.fontSize(20).text('Field Service Report', 50, yPosition);
+            yPosition += 30;
+            doc.fontSize(16).text('Air System Service Report', 50, yPosition);
+            yPosition += 40;
+
+            // Service Information
+            doc.fontSize(14).text('Service Information', 50, yPosition);
+            yPosition += 25;
+            
+            const param = finalObject.param || {};
+            const paramObj = finalObject.paramObj || {};
+            
+            // FSR Number
+            doc.fontSize(10).text(`FSR Number: ${param.call_no || 'N/A'}`, 50, yPosition);
+            yPosition += 15;
+            
+            // Customer Name
+            doc.text(`Customer Name: ${paramObj.customer_name || 'N/A'}`, 50, yPosition);
+            yPosition += 15;
+            
+            // Service Type
+            doc.text(`Service Type: ${paramObj.service_type || 'Air System Service'}`, 50, yPosition);
+            yPosition += 15;
+            
+            // Date
+            doc.text(`Date: ${paramObj.report_date || new Date().toLocaleDateString()}`, 50, yPosition);
+            yPosition += 15;
+            
+            // Site Name
+            doc.text(`Site Name: ${paramObj.site_name || 'N/A'}`, 50, yPosition);
+            yPosition += 15;
+            
+            // Engineer Name
+            doc.text(`Engineer Name: ${paramObj.engineer_name || 'N/A'}`, 50, yPosition);
+            yPosition += 25;
+
+            // Work Performed
+            doc.fontSize(14).text('Work Performed', 50, yPosition);
+            yPosition += 20;
+            doc.fontSize(10).text(paramObj.work_performed || 'Air system maintenance and inspection performed.', 50, yPosition, { width: 500 });
+            yPosition += 30;
+
+            // Recommendations
+            doc.fontSize(14).text('Recommendations', 50, yPosition);
+            yPosition += 20;
+            doc.fontSize(10).text(paramObj.recommendations || 'Schedule next maintenance in 6 months.', 50, yPosition, { width: 500 });
+            yPosition += 30;
+
+            // Time Spent
+            doc.fontSize(14).text('Time Spent', 50, yPosition);
+            yPosition += 20;
+            doc.fontSize(10).text(`Start Time: ${paramObj.start_time || 'N/A'}`, 50, yPosition);
+            yPosition += 15;
+            doc.text(`End Time: ${paramObj.end_time || 'N/A'}`, 50, yPosition);
+            yPosition += 15;
+            doc.text(`Total Time: ${paramObj.total_time || 'N/A'}`, 50, yPosition);
+            yPosition += 25;
+
+            // Parts Information
+            doc.fontSize(14).text('Parts Information', 50, yPosition);
+            yPosition += 20;
+            
+            // Parts Returned
+            doc.fontSize(12).text('Parts Returned:', 50, yPosition);
+            yPosition += 15;
+            
+            if (param.material && Array.isArray(param.material)) {
+                const returnedParts = param.material.filter(item => 
+                    item.part_activity && item.part_activity.toLowerCase().includes('return')
+                );
+                
+                if (returnedParts.length > 0) {
+                    returnedParts.forEach((part, index) => {
+                        doc.fontSize(10).text(`${index + 1}. ${part.part_code || ''} - ${part.part_description || ''} (Serial: ${part.part_serialno || ''}, Qty: ${part.part_qty || ''})`, 70, yPosition);
                         yPosition += 12;
                     });
-                    yPosition += 10;
+                } else {
+                    doc.fontSize(10).text('No parts returned', 70, yPosition);
+                    yPosition += 12;
                 }
-            });
+            } else {
+                doc.fontSize(10).text('No parts data available', 70, yPosition);
+                yPosition += 12;
+            }
+            
+            yPosition += 15;
+            
+            // Parts Issued
+            doc.fontSize(12).text('Parts Issued:', 50, yPosition);
+            yPosition += 15;
+            
+            if (param.material && Array.isArray(param.material)) {
+                const issuedParts = param.material.filter(item => 
+                    item.part_activity && item.part_activity.toLowerCase().includes('issued')
+                );
+                
+                if (issuedParts.length > 0) {
+                    issuedParts.forEach((part, index) => {
+                        doc.fontSize(10).text(`${index + 1}. ${part.part_code || ''} - ${part.part_description || ''} (Serial: ${part.part_serialno || ''}, Qty: ${part.part_qty || ''})`, 70, yPosition);
+                        yPosition += 12;
+                    });
+                } else {
+                    doc.fontSize(10).text('No parts issued', 70, yPosition);
+                    yPosition += 12;
+                }
+            } else {
+                doc.fontSize(10).text('No parts data available', 70, yPosition);
+                yPosition += 12;
+            }
 
             // Add timestamp
             doc.text(`Generated on: ${new Date().toLocaleString()}`, 50, doc.page.height - 100);
@@ -830,49 +914,68 @@ function convertHTMLToPDFContent(htmlContent) {
     sections.push({ type: 'subtitle', text: 'Service Information' });
     
     // Extract FSR Number
-    const fsrMatch = htmlContent.match(/FSR Number:.*?<div class="info-value">([^<]*)<\/div>/);
+    const fsrMatch = htmlContent.match(/FSR Number:.*?<div class="info-value">([^<]*)<\/div>/s);
     if (fsrMatch) {
         sections.push({ type: 'text', text: `FSR Number: ${fsrMatch[1]}` });
     }
     
     // Extract Customer Name
-    const customerMatch = htmlContent.match(/Customer Name:.*?<div class="info-value">([^<]*)<\/div>/);
+    const customerMatch = htmlContent.match(/Customer Name:.*?<div class="info-value">([^<]*)<\/div>/s);
     if (customerMatch) {
         sections.push({ type: 'text', text: `Customer Name: ${customerMatch[1]}` });
     }
     
     // Extract Service Type
-    const serviceMatch = htmlContent.match(/Service Type:.*?<div class="info-value">([^<]*)<\/div>/);
+    const serviceMatch = htmlContent.match(/Service Type:.*?<div class="info-value">([^<]*)<\/div>/s);
     if (serviceMatch) {
         sections.push({ type: 'text', text: `Service Type: ${serviceMatch[1]}` });
     }
     
     // Extract Date
-    const dateMatch = htmlContent.match(/Date:.*?<div class="info-value">([^<]*)<\/div>/);
+    const dateMatch = htmlContent.match(/Date:.*?<div class="info-value">([^<]*)<\/div>/s);
     if (dateMatch) {
         sections.push({ type: 'text', text: `Date: ${dateMatch[1]}` });
     }
     
-    // Extract Problem Statement
-    sections.push({ type: 'subtitle', text: 'Problem Statement' });
-    const problemMatch = htmlContent.match(/<div class="info-value">([^<]*)<\/div>/);
-    if (problemMatch) {
-        sections.push({ type: 'text', text: problemMatch[1] });
+    // Extract Site Name
+    const siteMatch = htmlContent.match(/Site Name:.*?<div class="info-value">([^<]*)<\/div>/s);
+    if (siteMatch) {
+        sections.push({ type: 'text', text: `Site Name: ${siteMatch[1]}` });
+    }
+    
+    // Extract Engineer Name
+    const engineerMatch = htmlContent.match(/Engineer Name:.*?<div class="info-value">([^<]*)<\/div>/s);
+    if (engineerMatch) {
+        sections.push({ type: 'text', text: `Engineer Name: ${engineerMatch[1]}` });
+    }
+    
+    // Extract Work Performed
+    sections.push({ type: 'subtitle', text: 'Work Performed' });
+    const workMatch = htmlContent.match(/Work Performed.*?<div class="info-value">([^<]*)<\/div>/s);
+    if (workMatch) {
+        sections.push({ type: 'text', text: workMatch[1] });
+    }
+    
+    // Extract Recommendations
+    sections.push({ type: 'subtitle', text: 'Recommendations' });
+    const recommendationsMatch = htmlContent.match(/Recommendations.*?<div class="info-value">([^<]*)<\/div>/s);
+    if (recommendationsMatch) {
+        sections.push({ type: 'text', text: recommendationsMatch[1] });
     }
     
     // Extract Time Spent
     sections.push({ type: 'subtitle', text: 'Time Spent' });
-    const startTimeMatch = htmlContent.match(/Start Time:.*?<div class="info-value">([^<]*)<\/div>/);
+    const startTimeMatch = htmlContent.match(/Start Time:.*?<div class="info-value">([^<]*)<\/div>/s);
     if (startTimeMatch) {
         sections.push({ type: 'text', text: `Start Time: ${startTimeMatch[1]}` });
     }
     
-    const endTimeMatch = htmlContent.match(/End Time:.*?<div class="info-value">([^<]*)<\/div>/);
+    const endTimeMatch = htmlContent.match(/End Time:.*?<div class="info-value">([^<]*)<\/div>/s);
     if (endTimeMatch) {
         sections.push({ type: 'text', text: `End Time: ${endTimeMatch[1]}` });
     }
     
-    const totalTimeMatch = htmlContent.match(/Total Time:.*?<div class="info-value">([^<]*)<\/div>/);
+    const totalTimeMatch = htmlContent.match(/Total Time:.*?<div class="info-value">([^<]*)<\/div>/s);
     if (totalTimeMatch) {
         sections.push({ type: 'text', text: `Total Time: ${totalTimeMatch[1]}` });
     }
