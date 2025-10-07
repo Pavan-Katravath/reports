@@ -467,6 +467,7 @@ export async function generateAirReport(finalObject) {
  */
 function generateAirReportHTML(finalObject) {
     const param = finalObject.param || {};
+    const paramObj = finalObject.paramObj || {};
     const room = finalObject.room || {};
     
     return `<!DOCTYPE html>
@@ -613,23 +614,37 @@ function generateAirReportHTML(finalObject) {
                 </div>
                 <div class="info-item">
                     <div class="info-label">Customer Name:</div>
-                    <div class="info-value">${room.name || 'N/A'}</div>
+                    <div class="info-value">${paramObj.customer_name || 'N/A'}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Service Type:</div>
-                    <div class="info-value">${param.service_type || 'Air System Service'}</div>
+                    <div class="info-value">${paramObj.service_type || 'Air System Service'}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Date:</div>
-                    <div class="info-value">${new Date().toLocaleDateString()}</div>
+                    <div class="info-value">${paramObj.report_date || new Date().toLocaleDateString()}</div>
                 </div>
+                <div class="info-item">
+                    <div class="info-label">Site Name:</div>
+                    <div class="info-value">${paramObj.site_name || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Engineer Name:</div>
+                    <div class="info-value">${paramObj.engineer_name || 'N/A'}</div>
+                </div>
+            </div>
+
+        <div class="section">
+            <div class="section-title">Work Performed</div>
+            <div class="info-item">
+                <div class="info-value">${paramObj.work_performed || 'Air system maintenance and inspection performed.'}</div>
             </div>
         </div>
 
         <div class="section">
-            <div class="section-title">Problem Statement</div>
+            <div class="section-title">Recommendations</div>
             <div class="info-item">
-                <div class="info-value">${param.problem_statement || 'Air system maintenance and service performed.'}</div>
+                <div class="info-value">${paramObj.recommendations || 'Schedule next maintenance in 6 months.'}</div>
             </div>
         </div>
 
@@ -638,15 +653,15 @@ function generateAirReportHTML(finalObject) {
             <div class="info-grid">
                 <div class="info-item">
                     <div class="info-label">Start Time:</div>
-                    <div class="info-value">${param.start_time || 'N/A'}</div>
+                    <div class="info-value">${paramObj.start_time || 'N/A'}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">End Time:</div>
-                    <div class="info-value">${param.end_time || 'N/A'}</div>
+                    <div class="info-value">${paramObj.end_time || 'N/A'}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Total Time:</div>
-                    <div class="info-value">${param.total_time || 'N/A'}</div>
+                    <div class="info-value">${paramObj.total_time || 'N/A'}</div>
                 </div>
             </div>
         </div>
@@ -667,7 +682,7 @@ function generateAirReportHTML(finalObject) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${generatePartsTableRows(finalObject.returnedEls || '')}
+                        ${generatePartsTableRowsFromMaterial(param.material || [], 'returned')}
                     </tbody>
                 </table>
             </div>
@@ -685,7 +700,7 @@ function generateAirReportHTML(finalObject) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${generatePartsTableRows(finalObject.issuedEls || '')}
+                        ${generatePartsTableRowsFromMaterial(param.material || [], 'issued')}
                     </tbody>
                 </table>
             </div>
@@ -708,6 +723,49 @@ function generateAirReportHTML(finalObject) {
     </div>
 </body>
 </html>`;
+}
+
+/**
+ * Generate table rows from material data
+ * @param {Array} material - Array of material objects
+ * @param {string} activityType - 'issued' or 'returned'
+ * @returns {string} HTML table rows
+ */
+function generatePartsTableRowsFromMaterial(material, activityType) {
+    if (!material || !Array.isArray(material) || material.length === 0) {
+        return '<tr><td colspan="5">No parts data available</td></tr>';
+    }
+    
+    const rows = [];
+    let rowCount = 0;
+    
+    // Filter material by activity type
+    const filteredMaterial = material.filter(item => 
+        item.part_activity && item.part_activity.toLowerCase().includes(activityType)
+    );
+    
+    // Generate rows for each material item
+    filteredMaterial.forEach((item, index) => {
+        const rowNumber = index + 1;
+        rows.push(`
+            <tr>
+                <td>${rowNumber}</td>
+                <td>${item.part_code || ''}</td>
+                <td>${item.part_description || ''}</td>
+                <td>${item.part_serialno || ''}</td>
+                <td>${item.part_qty || ''}</td>
+            </tr>
+        `);
+        rowCount++;
+    });
+    
+    // Add empty rows if needed (minimum 3 rows)
+    while (rowCount < 3) {
+        rows.push('<tr><td></td><td></td><td></td><td></td><td></td></tr>');
+        rowCount++;
+    }
+    
+    return rows.join('');
 }
 
 /**
