@@ -408,7 +408,9 @@ export async function generateAirReport(finalObject) {
             });
             doc.on('error', reject);
 
-            // Add content to PDF directly from data
+            const param = finalObject.param || {};
+            const paramObj = finalObject.paramObj || {};
+            
             let yPosition = 50;
             
             // Add logo if available
@@ -416,123 +418,354 @@ export async function generateAirReport(finalObject) {
                 try {
                     const base64Data = finalObject.logo.split(',')[1];
                     const imageBuffer = Buffer.from(base64Data, 'base64');
-                    doc.image(imageBuffer, 50, yPosition, { width: 100, height: 50 });
-                    yPosition += 80;
+                    doc.image(imageBuffer, 450, yPosition, { width: 100, height: 40 });
                 } catch (logoError) {
                     console.warn('Logo processing failed:', logoError.message);
                 }
             }
 
-            // Add title and subtitle
-            doc.fontSize(20).text('Field Service Report', 50, yPosition);
-            yPosition += 30;
-            doc.fontSize(16).text('Air System Service Report', 50, yPosition);
+            // Header - Field Service Report
+            doc.fontSize(21).text('Field Service Report', 50, yPosition);
+            yPosition += 60;
+
+            // FSR Number and Date row
+            doc.fontSize(10).text('FSR Number:', 50, yPosition);
+            doc.text(param.call_no || 'N/A', 120, yPosition);
+            doc.text('FSR Date & Time:', 300, yPosition);
+            doc.text(paramObj.report_date || new Date().toLocaleDateString(), 420, yPosition);
+            yPosition += 25;
+
+            // Main information table (3 columns)
+            const tableStartY = yPosition;
+            const tableHeight = 120;
+            const col1Width = 200;
+            const col2Width = 200;
+            const col3Width = 200;
+
+            // Draw table borders
+            doc.rect(50, tableStartY, col1Width, tableHeight).stroke();
+            doc.rect(250, tableStartY, col2Width, tableHeight).stroke();
+            doc.rect(450, tableStartY, col3Width, tableHeight).stroke();
+
+            // Column 1 - Customer Information
+            let currentY = tableStartY + 15;
+            doc.fontSize(9).text('Customer Name:', 55, currentY);
+            doc.text(paramObj.customer_name || 'N/A', 55, currentY + 12, { width: col1Width - 10 });
+            currentY += 30;
+
+            doc.text('Address:', 55, currentY);
+            doc.text(paramObj.site_name || 'N/A', 55, currentY + 12, { width: col1Width - 10 });
+            currentY += 30;
+
+            doc.text('Contact Person:', 55, currentY);
+            doc.text(paramObj.engineer_name || 'N/A', 55, currentY + 12);
+            currentY += 20;
+
+            doc.text('Contact Number:', 55, currentY);
+            doc.text('N/A', 55, currentY + 12);
+
+            // Column 2 - Service Information
+            currentY = tableStartY + 15;
+            doc.text('Service Type:', 255, currentY);
+            doc.text(paramObj.service_type || 'Air System Service', 255, currentY + 12);
+            currentY += 20;
+
+            doc.text('Product Model:', 255, currentY);
+            doc.text('N/A', 255, currentY + 12);
+            currentY += 20;
+
+            doc.text('Product Rating:', 255, currentY);
+            doc.text('N/A', 255, currentY + 12);
+            currentY += 20;
+
+            doc.text('Serial Number:', 255, currentY);
+            doc.text('N/A', 255, currentY + 12);
+            currentY += 20;
+
+            doc.text('Product Coverage:', 255, currentY);
+            doc.text('N/A', 255, currentY + 12);
+            currentY += 20;
+
+            doc.text('Engineer Name:', 255, currentY);
+            doc.text(paramObj.engineer_name || 'N/A', 255, currentY + 12);
+
+            // Column 3 - Request Information
+            currentY = tableStartY + 15;
+            doc.text('Request Number:', 455, currentY);
+            doc.text(param.call_no || 'N/A', 455, currentY + 12);
+            currentY += 20;
+
+            doc.text('Request Date/Time:', 455, currentY);
+            doc.text(paramObj.report_date || new Date().toLocaleDateString(), 455, currentY + 12);
+            currentY += 20;
+
+            doc.text('Assigned Date/Time:', 455, currentY);
+            doc.text('N/A', 455, currentY + 12);
+            currentY += 20;
+
+            doc.text('Scheduled Date/Time:', 455, currentY);
+            doc.text('N/A', 455, currentY + 12);
+            currentY += 20;
+
+            doc.text('Closed Date/Time:', 455, currentY);
+            doc.text('N/A', 455, currentY + 12);
+            currentY += 20;
+
+            doc.text('Engineer contact No:', 455, currentY);
+            doc.text('N/A', 455, currentY + 12);
+
+            yPosition = tableStartY + tableHeight + 20;
+
+            // Problem Statement
+            doc.fontSize(10).text('Problem statement:', 50, yPosition);
+            doc.text(paramObj.problem_statement || 'Air system maintenance and service performed.', 50, yPosition + 15, { width: 500 });
             yPosition += 40;
 
-            // Service Information
-            doc.fontSize(14).text('Service Information', 50, yPosition);
-            yPosition += 25;
-            
-            const param = finalObject.param || {};
-            const paramObj = finalObject.paramObj || {};
-            
-            // FSR Number
-            doc.fontSize(10).text(`FSR Number: ${param.call_no || 'N/A'}`, 50, yPosition);
-            yPosition += 15;
-            
-            // Customer Name
-            doc.text(`Customer Name: ${paramObj.customer_name || 'N/A'}`, 50, yPosition);
-            yPosition += 15;
-            
-            // Service Type
-            doc.text(`Service Type: ${paramObj.service_type || 'Air System Service'}`, 50, yPosition);
-            yPosition += 15;
-            
-            // Date
-            doc.text(`Date: ${paramObj.report_date || new Date().toLocaleDateString()}`, 50, yPosition);
-            yPosition += 15;
-            
-            // Site Name
-            doc.text(`Site Name: ${paramObj.site_name || 'N/A'}`, 50, yPosition);
-            yPosition += 15;
-            
-            // Engineer Name
-            doc.text(`Engineer Name: ${paramObj.engineer_name || 'N/A'}`, 50, yPosition);
+            // Call Type
+            doc.text('Call Type:', 50, yPosition);
+            doc.text('Service Call', 50, yPosition + 15);
+            yPosition += 35;
+
+            // Problem Code and Resolution Code row
+            doc.rect(50, yPosition, 300, 20).stroke();
+            doc.rect(350, yPosition, 300, 20).stroke();
+            doc.text('Problem Code:', 55, yPosition + 5);
+            doc.text('N/A', 55, yPosition + 15);
+            doc.text('Resolution Code:', 355, yPosition + 5);
+            doc.text('N/A', 355, yPosition + 15);
+            yPosition += 40;
+
+            // Site Assessment / Safety Risk Assessment
+            doc.fontSize(15).text('Site Assessment / Safety Risk Assessment:', 50, yPosition);
             yPosition += 25;
 
-            // Work Performed
-            doc.fontSize(14).text('Work Performed', 50, yPosition);
-            yPosition += 20;
-            doc.fontSize(10).text(paramObj.work_performed || 'Air system maintenance and inspection performed.', 50, yPosition, { width: 500 });
-            yPosition += 30;
+            // Assessment table (4 columns)
+            const assessmentStartY = yPosition;
+            const assessmentHeight = 30;
+            const assessmentColWidth = 150;
 
-            // Recommendations
-            doc.fontSize(14).text('Recommendations', 50, yPosition);
-            yPosition += 20;
-            doc.fontSize(10).text(paramObj.recommendations || 'Schedule next maintenance in 6 months.', 50, yPosition, { width: 500 });
-            yPosition += 30;
+            for (let i = 0; i < 4; i++) {
+                doc.rect(50 + (i * assessmentColWidth), assessmentStartY, assessmentColWidth, assessmentHeight).stroke();
+                doc.fontSize(9).text(`Assessment ${i + 1}`, 55 + (i * assessmentColWidth), assessmentStartY + 10);
+                doc.text('Passed', 55 + (i * assessmentColWidth), assessmentStartY + 20);
+            }
+            yPosition = assessmentStartY + assessmentHeight + 20;
 
-            // Time Spent
-            doc.fontSize(14).text('Time Spent', 50, yPosition);
-            yPosition += 20;
-            doc.fontSize(10).text(`Start Time: ${paramObj.start_time || 'N/A'}`, 50, yPosition);
-            yPosition += 15;
-            doc.text(`End Time: ${paramObj.end_time || 'N/A'}`, 50, yPosition);
-            yPosition += 15;
-            doc.text(`Total Time: ${paramObj.total_time || 'N/A'}`, 50, yPosition);
+            // Time Spent section
+            doc.fontSize(15).text('Time Spent:', 50, yPosition);
             yPosition += 25;
 
-            // Parts Information
-            doc.fontSize(14).text('Parts Information', 50, yPosition);
-            yPosition += 20;
-            
-            // Parts Returned
-            doc.fontSize(12).text('Parts Returned:', 50, yPosition);
-            yPosition += 15;
-            
+            // Time Spent table (3 columns)
+            const timeStartY = yPosition;
+            const timeHeight = 80;
+            const timeColWidth = 200;
+
+            for (let i = 0; i < 3; i++) {
+                doc.rect(50 + (i * timeColWidth), timeStartY, timeColWidth, timeHeight).stroke();
+            }
+
+            // Column 1 - Travel and Reporting times
+            doc.fontSize(9).text('Travel Start Date/Time:', 55, timeStartY + 10);
+            doc.text('N/A', 55, timeStartY + 20);
+            doc.text('Reporting Date/Time:', 55, timeStartY + 35);
+            doc.text(paramObj.start_time || 'N/A', 55, timeStartY + 45);
+            doc.text('Completion Date/Time:', 55, timeStartY + 60);
+            doc.text(paramObj.end_time || 'N/A', 55, timeStartY + 70);
+
+            // Column 2 - On site and travel times
+            doc.text('On Site Time:', 255, timeStartY + 10);
+            doc.text(paramObj.total_time || 'N/A', 255, timeStartY + 20);
+            doc.text('Travel Time:', 255, timeStartY + 35);
+            doc.text('N/A', 255, timeStartY + 45);
+            doc.text('Number of Visits:', 255, timeStartY + 60);
+            doc.text('1', 255, timeStartY + 70);
+
+            // Column 3 - Equipment and break times
+            doc.text('Equipment Face:', 455, timeStartY + 10);
+            doc.text('N/A', 455, timeStartY + 20);
+            doc.text('Break/Idle Time:', 455, timeStartY + 35);
+            doc.text('N/A', 455, timeStartY + 45);
+            doc.text('Total Time Spent:', 455, timeStartY + 60);
+            doc.text(paramObj.total_time || 'N/A', 455, timeStartY + 70);
+
+            yPosition = timeStartY + timeHeight + 20;
+
+            // Call Activity section
+            doc.fontSize(15).text('Call Activity:', 50, yPosition);
+            yPosition += 25;
+
+            // Call Activity table (2 columns)
+            const activityStartY = yPosition;
+            const activityHeight = 120;
+            const activityColWidth = 300;
+
+            doc.rect(50, activityStartY, activityColWidth, activityHeight).stroke();
+            doc.rect(350, activityStartY, activityColWidth, activityHeight).stroke();
+
+            // Left column - Observation and Recommendation
+            doc.fontSize(10).text('Observation:', 55, activityStartY + 10);
+            doc.fontSize(9).text('System inspection completed', 55, activityStartY + 25, { width: activityColWidth - 10 });
+
+            doc.fontSize(10).text('Recommendation:', 55, activityStartY + 60);
+            doc.fontSize(9).text(paramObj.recommendations || 'Schedule next maintenance in 6 months.', 55, activityStartY + 75, { width: activityColWidth - 10 });
+
+            // Right column - Work Done
+            doc.fontSize(10).text('Work Done:', 355, activityStartY + 10);
+            doc.fontSize(9).text(paramObj.work_performed || 'Air system maintenance and inspection performed.', 355, activityStartY + 25, { width: activityColWidth - 10 });
+
+            yPosition = activityStartY + activityHeight + 30;
+
+            // Page break for parts section
+            if (yPosition > 600) {
+                doc.addPage();
+                yPosition = 50;
+            }
+
+            // Parts Returned section
+            doc.fontSize(15).text('Part Returned:', 50, yPosition);
+            yPosition += 25;
+
+            // Parts Returned table header
+            const partsHeaderY = yPosition;
+            const partsColWidths = [40, 100, 300, 150, 60];
+            let currentX = 50;
+
+            for (let i = 0; i < partsColWidths.length; i++) {
+                doc.rect(currentX, partsHeaderY, partsColWidths[i], 20).stroke();
+                currentX += partsColWidths[i];
+            }
+
+            // Header text
+            doc.fontSize(9).text('Sr No', 55, partsHeaderY + 5);
+            doc.text('Part Code', 95, partsHeaderY + 5);
+            doc.text('Part Description', 200, partsHeaderY + 5);
+            doc.text('Serial Number', 505, partsHeaderY + 5);
+            doc.text('Quantity', 660, partsHeaderY + 5);
+
+            yPosition = partsHeaderY + 25;
+
+            // Parts Returned data
             if (param.material && Array.isArray(param.material)) {
                 const returnedParts = param.material.filter(item => 
                     item.part_activity && item.part_activity.toLowerCase().includes('return')
                 );
                 
-                if (returnedParts.length > 0) {
-                    returnedParts.forEach((part, index) => {
-                        doc.fontSize(10).text(`${index + 1}. ${part.part_code || ''} - ${part.part_description || ''} (Serial: ${part.part_serialno || ''}, Qty: ${part.part_qty || ''})`, 70, yPosition);
-                        yPosition += 12;
-                    });
-                } else {
-                    doc.fontSize(10).text('No parts returned', 70, yPosition);
-                    yPosition += 12;
-                }
-            } else {
-                doc.fontSize(10).text('No parts data available', 70, yPosition);
-                yPosition += 12;
+                returnedParts.forEach((part, index) => {
+                    currentX = 50;
+                    for (let i = 0; i < partsColWidths.length; i++) {
+                        doc.rect(currentX, yPosition, partsColWidths[i], 20).stroke();
+                        currentX += partsColWidths[i];
+                    }
+                    
+                    doc.fontSize(9).text((index + 1).toString(), 55, yPosition + 5);
+                    doc.text(part.part_code || '', 95, yPosition + 5);
+                    doc.text(part.part_description || '', 200, yPosition + 5, { width: 300 });
+                    doc.text(part.part_serialno || '', 505, yPosition + 5);
+                    doc.text(part.part_qty || '', 660, yPosition + 5);
+                    yPosition += 20;
+                });
             }
-            
-            yPosition += 15;
-            
-            // Parts Issued
-            doc.fontSize(12).text('Parts Issued:', 50, yPosition);
-            yPosition += 15;
-            
+
+            // Add empty rows if needed
+            while (yPosition < partsHeaderY + 100) {
+                currentX = 50;
+                for (let i = 0; i < partsColWidths.length; i++) {
+                    doc.rect(currentX, yPosition, partsColWidths[i], 20).stroke();
+                    currentX += partsColWidths[i];
+                }
+                yPosition += 20;
+            }
+
+            yPosition += 20;
+
+            // Parts Consumed section
+            doc.fontSize(15).text('Part Consumed:', 50, yPosition);
+            yPosition += 25;
+
+            // Parts Consumed table header
+            const consumedHeaderY = yPosition;
+            currentX = 50;
+
+            for (let i = 0; i < partsColWidths.length; i++) {
+                doc.rect(currentX, consumedHeaderY, partsColWidths[i], 20).stroke();
+                currentX += partsColWidths[i];
+            }
+
+            // Header text
+            doc.fontSize(9).text('Sr No', 55, consumedHeaderY + 5);
+            doc.text('Part Code', 95, consumedHeaderY + 5);
+            doc.text('Part Description', 200, consumedHeaderY + 5);
+            doc.text('Serial Number', 505, consumedHeaderY + 5);
+            doc.text('Quantity', 660, consumedHeaderY + 5);
+
+            yPosition = consumedHeaderY + 25;
+
+            // Parts Consumed data
             if (param.material && Array.isArray(param.material)) {
                 const issuedParts = param.material.filter(item => 
                     item.part_activity && item.part_activity.toLowerCase().includes('issued')
                 );
                 
-                if (issuedParts.length > 0) {
-                    issuedParts.forEach((part, index) => {
-                        doc.fontSize(10).text(`${index + 1}. ${part.part_code || ''} - ${part.part_description || ''} (Serial: ${part.part_serialno || ''}, Qty: ${part.part_qty || ''})`, 70, yPosition);
-                        yPosition += 12;
-                    });
-                } else {
-                    doc.fontSize(10).text('No parts issued', 70, yPosition);
-                    yPosition += 12;
-                }
-            } else {
-                doc.fontSize(10).text('No parts data available', 70, yPosition);
-                yPosition += 12;
+                issuedParts.forEach((part, index) => {
+                    currentX = 50;
+                    for (let i = 0; i < partsColWidths.length; i++) {
+                        doc.rect(currentX, yPosition, partsColWidths[i], 20).stroke();
+                        currentX += partsColWidths[i];
+                    }
+                    
+                    doc.fontSize(9).text((index + 1).toString(), 55, yPosition + 5);
+                    doc.text(part.part_code || '', 95, yPosition + 5);
+                    doc.text(part.part_description || '', 200, yPosition + 5, { width: 300 });
+                    doc.text(part.part_serialno || '', 505, yPosition + 5);
+                    doc.text(part.part_qty || '', 660, yPosition + 5);
+                    yPosition += 20;
+                });
             }
+
+            // Add empty rows if needed
+            while (yPosition < consumedHeaderY + 100) {
+                currentX = 50;
+                for (let i = 0; i < partsColWidths.length; i++) {
+                    doc.rect(currentX, yPosition, partsColWidths[i], 20).stroke();
+                    currentX += partsColWidths[i];
+                }
+                yPosition += 20;
+            }
+
+            yPosition += 20;
+
+            // Service Billable
+            doc.text('Service Billable:', 50, yPosition);
+            doc.text('Yes', 50, yPosition + 15);
+            yPosition += 40;
+
+            // Signature section
+            doc.fontSize(15).text('Signatures:', 50, yPosition);
+            yPosition += 25;
+
+            // Signature boxes
+            const signatureBoxHeight = 80;
+            const signatureBoxWidth = 300;
+
+            doc.rect(50, yPosition, signatureBoxWidth, signatureBoxHeight).stroke();
+            doc.rect(350, yPosition, signatureBoxWidth, signatureBoxHeight).stroke();
+
+            doc.fontSize(10).text('Technician Signature', 55, yPosition + 10);
+            doc.text('Customer Signature', 355, yPosition + 10);
+            doc.text('Date:', 55, yPosition + signatureBoxHeight - 20);
+            doc.text(new Date().toLocaleDateString(), 80, yPosition + signatureBoxHeight - 20);
+            doc.text('Date:', 355, yPosition + signatureBoxHeight - 20);
+            doc.text(new Date().toLocaleDateString(), 380, yPosition + signatureBoxHeight - 20);
+
+            yPosition += signatureBoxHeight + 30;
+
+            // Footer
+            doc.rect(50, yPosition, 500, 40).fill('#d8d8d8');
+            doc.fillColor('black');
+            doc.fontSize(11).text('For Queries, please contact our Customer Care Centre', 55, yPosition + 5);
+            doc.text('Toll Free: 1800 209 6070 Email: Customer.Care@vertiv.com', 55, yPosition + 15);
+            doc.text('Vertiv Energy Private Limited', 55, yPosition + 25);
+            doc.text('ISO No: QS-FM-SER-1-04-01', 450, yPosition + 25);
 
             // Add timestamp
             doc.text(`Generated on: ${new Date().toLocaleString()}`, 50, doc.page.height - 100);
@@ -715,8 +948,8 @@ function generateAirReportHTML(finalObject) {
                 <div class="info-item">
                     <div class="info-label">Engineer Name:</div>
                     <div class="info-value">${paramObj.engineer_name || 'N/A'}</div>
-                </div>
             </div>
+        </div>
 
         <div class="section">
             <div class="section-title">Work Performed</div>
